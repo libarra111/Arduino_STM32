@@ -41,6 +41,7 @@
 
 #include <boards.h>
 #include <usb_serial.h>
+#include <usb_hid_device.h>
 
 // Allow boards to provide a PLL multiplier. This is useful for
 // e.g. STM32F100 value line MCUs, which use slower multipliers.
@@ -80,9 +81,12 @@ namespace wirish {
         }
 
         __weak void board_setup_usb(void) {
-#ifdef SERIAL_USB
+#if  defined(SERIAL_USB) && defined(USB_SERIAL)
 //          SerialUSB.begin();
 			Serial.begin();// Roger Clark. Changed SerialUSB to Serial for Arduino sketch compatibility
+#endif
+#if  defined(SERIAL_USB) && defined(USB_HID)
+			HID.begin();
 #endif
 		}
 
