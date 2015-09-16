@@ -214,7 +214,7 @@ typedef struct
 	uint8_t	descLenH;
 } HIDDescriptor;
 
-#define USB_DEVICE_CLASS_HID              0x03
+#define USB_DEVICE_CLASS_HID              0x00
 #define USB_DEVICE_SUBCLASS_HID           0x00
 #define USB_INTERFACE_CLASS_HID           0x03
 #define USB_INTERFACE_SUBCLASS_HID		  0x00
