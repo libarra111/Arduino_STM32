@@ -33,6 +33,8 @@
  * the result made cleaner.
  */
 
+#ifdef USB_HID
+ 
  
 #include <libmaple/usb_hid.h>
 
@@ -606,3 +608,5 @@ static void usbSetConfiguration(void) {
 static void usbSetDeviceAddress(void) {
     USBLIB->state = USB_ADDRESSED;
 }
+
+#endif

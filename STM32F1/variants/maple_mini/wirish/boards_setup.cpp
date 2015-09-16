@@ -42,6 +42,7 @@
 #include <boards.h>
 #include <usb_serial.h>
 #include <usb_hid_device.h>
+#include <usb_midi.h>
 
 // Allow boards to provide a PLL multiplier. This is useful for
 // e.g. STM32F100 value line MCUs, which use slower multipliers.
@@ -87,6 +88,9 @@ namespace wirish {
 #endif
 #if  defined(SERIAL_USB) && defined(USB_HID)
 			HID.begin();
+#endif
+#if  defined(SERIAL_USB) && defined(USB_MIDI)
+			MidiUSB.begin();
 #endif
 		}
 

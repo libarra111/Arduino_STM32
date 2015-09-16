@@ -25,6 +25,8 @@ mapleMini.menu.usb.serial=Serial
 mapleMini.menu.usb.serial.build.usbtype=USB_SERIAL
 mapleMini.menu.usb.hid=Keyboard + Mouse + Joystick
 mapleMini.menu.usb.hid.build.usbtype=USB_HID
+mapleMini.menu.usb.midi=MIDI
+mapleMini.menu.usb.midi.build.usbtype=USB_MIDI
 
 mapleMini.menu.bootloader_version.original = Original (17k RAM,108k Flash)
 mapleMini.menu.bootloader_version.original.build.vect=VECT_TAB_ADDR=0x8005000

@@ -31,6 +31,8 @@
  * IMPORTANT: this API is unstable, and may change without notice.
  */
 
+#ifdef USB_HID
+ 
 #ifndef _LIBMAPLE_USB_HID_H_
 #define _LIBMAPLE_USB_HID_H_
 
@@ -280,6 +282,8 @@ static uint8 *HID_GetHIDDescriptor(uint16 Length);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif

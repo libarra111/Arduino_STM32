@@ -27,6 +27,8 @@
 /**
  * @brief USB virtual serial terminal
  */
+ 
+#ifdef USB_SERIAL
 
 #include "usb_serial.h"
 
@@ -352,3 +354,5 @@ static void rxHook(unsigned hook, void *ignored) {
 }
 
 #endif  // BOARD_HAVE_SERIALUSB
+
+#endif //USB_SERIAL

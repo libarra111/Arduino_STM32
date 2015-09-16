@@ -17,6 +17,7 @@
 /**
  * @brief USB HID Keyboard device 
  */
+#ifdef USB_HID
 
 #include <usb_hid_device.h>
 
@@ -433,9 +434,10 @@ void HIDJoystick::hat(int16_t dir){
 }
 
 
-#ifdef USB_HID
 HIDDevice HID;
 HIDMouse Mouse;
 HIDKeyboard Keyboard;
 HIDJoystick Joystick;
+
+
 #endif

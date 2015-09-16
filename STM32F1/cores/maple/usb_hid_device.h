@@ -19,6 +19,8 @@
 /**
  * @brief Wirish USB HID port (HID USB).
  */
+ 
+#ifdef USB_HID
 
 #ifndef _WIRISH_USB_HID_KEYBOARD_H_
 #define _WIRISH_USB_HID_KEYBOARD_H_
@@ -276,11 +278,11 @@ public:
 	void hat(int16_t dir);
 };
 
-#ifdef USB_HID
 extern HIDDevice HID;
 extern HIDMouse Mouse;
 extern HIDKeyboard Keyboard;
 extern HIDJoystick Joystick;
+
 #endif
 
 #endif
