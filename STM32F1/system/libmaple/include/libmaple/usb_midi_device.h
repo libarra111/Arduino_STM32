@@ -32,7 +32,9 @@
  * IMPORTANT: this API is unstable, and may change without notice.
  */
 
+
 #ifdef USB_MIDI
+
 
 #ifndef _LIBMAPLE_USB_MIDI_H_
 #define _LIBMAPLE_USB_MIDI_H_
@@ -61,12 +63,13 @@ typedef union {
 #define USB_DESCRIPTOR_TYPE_CS_INTERFACE     0x24
 #define USB_DESCRIPTOR_TYPE_CS_ENDPOINT      0x25
  
-
-#define USB_DEVICE_CLASS_MIDI             0x01
-#define USB_DEVICE_SUBCLASS_MIDI	      0x03
+ 
+#define USB_DEVICE_CLASS_UNDEFINED        0x00
+#define USB_DEVICE_CLASS_CDC              0x02
+#define USB_DEVICE_SUBCLASS_UNDEFINED     0x00
 
 #define USB_INTERFACE_CLASS_AUDIO         0x01
-#define USB_INTERFACE_SUBCLASS_UNDEFINED  0x03
+#define USB_INTERFACE_SUBCLASS_UNDEFINED  0x00
 #define USB_INTERFACE_AUDIOCONTROL        0x01
 #define USB_INTERFACE_AUDIOSTREAMING      0x02
 #define USB_INTERFACE_MIDISTREAMING       0x03
@@ -156,8 +159,8 @@ typedef struct {
       .bLength            = sizeof(usb_descriptor_device),              \
       .bDescriptorType    = USB_DESCRIPTOR_TYPE_DEVICE,                 \
       .bcdUSB             = 0x0110,                                     \
-      .bDeviceClass       = USB_DEVICE_CLASS_MIDI,           	        \
-      .bDeviceSubClass    = USB_DEVICE_SUBCLASS_MIDI,         		    \
+      .bDeviceClass       = USB_DEVICE_CLASS_UNDEFINED,                 \
+      .bDeviceSubClass    = USB_DEVICE_SUBCLASS_UNDEFINED,              \
       .bDeviceProtocol    = 0x00,                                       \
       .bMaxPacketSize0    = 0x40,                                       \
       .idVendor           = vid,                                        \
@@ -200,6 +203,5 @@ typedef struct {
 #endif
 
 #endif
-
 
 #endif
