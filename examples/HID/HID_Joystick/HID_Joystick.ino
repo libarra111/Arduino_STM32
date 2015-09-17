@@ -1,7 +1,7 @@
 byte lPin = 33;
 
 void setup() {
-  pinMode(ledpin, OUTPUT);
+  pinMode(lPin, OUTPUT);
 }
 
 void loop() {
