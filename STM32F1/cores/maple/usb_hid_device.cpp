@@ -77,7 +77,6 @@ void HIDMouse::click(uint8_t b)
 
 void HIDMouse::move(signed char x, signed char y, signed char wheel)
 {
-	if ((x != 0) || (y != 0) || (wheel != 0)){ /* send mouse report only if x,y or wheel value is not 0 */
 	uint8_t m[4];
 	m[0] = _buttons;
 	m[1] = x;
@@ -97,7 +96,6 @@ void HIDMouse::move(signed char x, signed char y, signed char wheel)
     }
 	/* flush out to avoid having the pc wait for more data */
 	usb_hid_tx(NULL, 0);
-	}
 }
 
 void HIDMouse::buttons(uint8_t b)
