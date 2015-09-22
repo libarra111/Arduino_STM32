@@ -42,11 +42,17 @@ HIDDevice::HIDDevice(void){
 }
 
 void HIDDevice::begin(void){
-	usb_hid_enable(BOARD_USB_DISC_DEV, BOARD_USB_DISC_BIT);
+	if(!enabled){
+		usb_hid_enable(BOARD_USB_DISC_DEV, BOARD_USB_DISC_BIT);
+		enabled = true;
+	}
 }
 
 void HIDDevice::end(void){
-    usb_hid_disable(BOARD_USB_DISC_DEV, BOARD_USB_DISC_BIT);
+	if(enabled){
+	    usb_hid_disable(BOARD_USB_DISC_DEV, BOARD_USB_DISC_BIT);
+		enabled = false;
+	}
 }
 
 
@@ -58,9 +64,11 @@ HIDMouse::HIDMouse(void) : _buttons(0){
 }
 
 void HIDMouse::begin(void){
+	HID.begin();
 }
 
 void HIDMouse::end(void){
+	HID.end();
 }
 
 void HIDMouse::click(uint8_t b)
@@ -161,11 +169,11 @@ void HIDKeyboard::sendReport(KeyReport* keys)
 }
 
 void HIDKeyboard::begin(void){
-	
+	HID.begin();
 }
 
 void HIDKeyboard::end(void) {
-	
+	HID.end();
 }
 
 size_t HIDKeyboard::press(uint8_t k)
@@ -294,11 +302,11 @@ HIDJoystick::HIDJoystick(void){
 }
 
 void HIDJoystick::begin(void){
-	
+	HID.begin();
 }
 
 void HIDJoystick::end(void){
-	
+	HID.end();
 }
 
 void HIDJoystick::button(uint8_t button, bool val){
