@@ -160,6 +160,8 @@ const uint8_t _asciimap[128] =
 };
 
 class HIDDevice{
+private:
+	bool enabled = false;
 public:
 	HIDDevice(void);
 	void begin(void);
