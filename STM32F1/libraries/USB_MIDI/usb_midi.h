@@ -29,8 +29,6 @@
  * @brief Wirish USB MIDI port (MidiUSB).
  */
 
-#ifdef USB_MIDI
-
 #ifndef _WIRISH_USB_MIDI_H_
 #define _WIRISH_USB_MIDI_H_
 
@@ -217,6 +215,3 @@ extern USBMidi MidiUSB;
 
 
 #endif
-
-#endif
-

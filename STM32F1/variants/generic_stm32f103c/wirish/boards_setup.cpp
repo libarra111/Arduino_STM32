@@ -40,9 +40,9 @@
 #include <libmaple/timer.h>
 
 #include <boards.h>
-#include <usb_serial.h>
-#include <usb_hid_device.h>
-#include <usb_midi.h>
+//#include <usb_serial.h>
+//#include <usb_hid_device.h>
+//#include <usb_midi.h>
 
 // Allow boards to provide a PLL multiplier. This is useful for
 // e.g. STM32F100 value line MCUs, which use slower multipliers.
@@ -82,6 +82,16 @@ namespace wirish {
         }
 
         __weak void board_setup_usb(void) {
+#if defined(SERIAL_USB) && defined(GENERIC_BOOTLOADER)	
+			//Reset the USB interface on generic boards - developed by Victor PV
+			gpio_set_mode(PIN_MAP[PA12].gpio_device, PIN_MAP[PA12].gpio_bit, GPIO_OUTPUT_PP);
+			gpio_write_bit(PIN_MAP[PA12].gpio_device, PIN_MAP[PA12].gpio_bit,0);
+			
+			for(volatile unsigned int i=0;i<256;i++);// Only small delay seems to be needed, and USB pins will get configured in Serial.begin
+			gpio_set_mode(PIN_MAP[PA12].gpio_device, PIN_MAP[PA12].gpio_bit, GPIO_INPUT_FLOATING);
+#endif
+
+        	/*
 #if defined(SERIAL_USB) && defined(USB_SERIAL)
 			
 #ifdef GENERIC_BOOTLOADER			
@@ -117,7 +127,7 @@ namespace wirish {
 #endif		
 			MidiUSB.begin();
 #endif
-
+			*/
 		}
 
         __weak void series_init(void) {

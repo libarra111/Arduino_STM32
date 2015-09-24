@@ -1,7 +1,6 @@
 # STM32 Boards
 
 
-menu.usb = USB Type
 menu.device_variant=Variant
 menu.bootloader_version=Bootloader version
 menu.upload_method=Upload method
@@ -20,13 +19,6 @@ mapleMini.upload.protocol=maple_dfu
 mapleMini.upload.use_1200bps_touch=false
 mapleMini.upload.file_type=bin
 mapleMini.upload.auto_reset=true
-
-mapleMini.menu.usb.serial=Serial
-mapleMini.menu.usb.serial.build.usbtype=USB_SERIAL
-mapleMini.menu.usb.hid=Keyboard + Mouse + Joystick
-mapleMini.menu.usb.hid.build.usbtype=USB_HID
-mapleMini.menu.usb.midi=MIDI
-mapleMini.menu.usb.midi.build.usbtype=USB_MIDI
 
 mapleMini.menu.bootloader_version.original = Original (17k RAM,108k Flash)
 mapleMini.menu.bootloader_version.original.build.vect=VECT_TAB_ADDR=0x8005000
@@ -207,13 +199,6 @@ genericSTM32F103C.menu.upload_method.BMPMethod.upload.protocol=gdb_bmp
 genericSTM32F103C.menu.upload_method.BMPMethod.upload.tool=bmp_upload
 genericSTM32F103C.menu.upload_method.BMPMethod.build.upload_flags=-DCONFIG_MAPLE_MINI_NO_DISABLE_DEBUG
 
-#--USB
-genericSTM32F103C.menu.usb.serial=Serial
-genericSTM32F103C.menu.usb.serial.build.usbtype=USB_SERIAL
-genericSTM32F103C.menu.usb.hid=Keyboard + Mouse + Joystick
-genericSTM32F103C.menu.usb.hid.build.usbtype=USB_HID
-genericSTM32F103C.menu.usb.midi=MIDI
-genericSTM32F103C.menu.usb.midi.build.usbtype=USB_MIDI
 
 
 ########################### Generic STM32F103R  ###########################

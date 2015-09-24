@@ -32,11 +32,9 @@
  * place else. Nonportable bits really need to be factored out, and
  * the result made cleaner.
  */
-
-#ifdef USB_HID
  
  
-#include <libmaple/usb_hid.h>
+#include <usb_hid.h>
 
 #include <libmaple/usb.h>
 #include <libmaple/nvic.h>
@@ -45,11 +43,6 @@
 /* Private headers */
 #include "usb_lib_globals.h"
 #include "usb_reg_map.h"
-
-/* usb_lib headers */
-#include "usb_type.h"
-#include "usb_core.h"
-#include "usb_def.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -738,5 +731,3 @@ static void usbSetConfiguration(void) {
 static void usbSetDeviceAddress(void) {
     USBLIB->state = USB_ADDRESSED;
 }
-
-#endif

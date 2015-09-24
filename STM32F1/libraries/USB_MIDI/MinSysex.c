@@ -33,12 +33,10 @@
 */
 
 
-#ifdef USB_MIDI
-
 // change this to packets
 #define STANDARD_ID_RESPONSE_LENGTH 7
 
-#include <libmaple/usb_midi_device.h>
+#include <usb_midi_device.h>
 #include <libmaple/nvic.h>
 #include <libmaple/delay.h>
 #include <MinSysex.h>
@@ -299,5 +297,3 @@ void LglSysexHandler(uint32 *midiBufferRx, uint32 *rx_offset, uint32 *n_unread_p
     // its our sysex and we will cry if we want to
     return;
 }
-
-#endif

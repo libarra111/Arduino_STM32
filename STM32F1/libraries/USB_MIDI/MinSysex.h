@@ -7,13 +7,11 @@
 //
 
 
-#ifdef USB_MIDI
-
 #ifndef __LGL_MIN_SYSEX_H__
 #define __LGL_MIN_SYSEX_H__ 1
 
 
-#include "MidiSpecs.h"
+#include <MidiSpecs.h>
 //#include "LGL.h"
 
 #define LEAFLABS_MMA_VENDOR_1   0x7D
@@ -35,7 +33,5 @@ extern volatile uint8 myMidiID[];
 
 
 void LglSysexHandler(uint32 *midiBufferRx,uint32 *rx_offset,uint32 *n_unread_bytes);
-
-#endif
 
 #endif

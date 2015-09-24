@@ -33,9 +33,6 @@
  */
 
 
-#ifdef USB_MIDI
-
-
 #ifndef _LIBMAPLE_USB_MIDI_H_
 #define _LIBMAPLE_USB_MIDI_H_
 
@@ -200,8 +197,6 @@ typedef struct {
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
 
 #endif

@@ -30,8 +30,6 @@
  *
  * IMPORTANT: this API is unstable, and may change without notice.
  */
-
-#ifdef USB_HID
  
 #ifndef _LIBMAPLE_USB_HID_H_
 #define _LIBMAPLE_USB_HID_H_
@@ -39,6 +37,11 @@
 #include <libmaple/libmaple_types.h>
 #include <libmaple/gpio.h>
 #include <libmaple/usb.h>
+
+/* usb_lib headers */
+#include "usb_type.h"
+#include "usb_core.h"
+#include "usb_def.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -154,8 +157,6 @@ static uint8 *HID_GetHIDDescriptor(uint16 Length);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
 
 #endif

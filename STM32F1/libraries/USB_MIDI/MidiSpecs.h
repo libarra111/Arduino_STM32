@@ -34,8 +34,6 @@
  *
  */
 
-#ifdef USB_MIDI
-
 #ifndef __LETS_MIDI_SPECS_H__
 #define __LETS_MIDI_SPECS_H__
 #include <stdint.h>
@@ -149,7 +147,3 @@ typedef struct // may need to be adjusted for other compilers and bitfield order
 
 
 #endif
-
-#endif
-
-

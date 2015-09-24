@@ -55,14 +55,12 @@
  * @brief USB MIDI device with a class compatible with maplemidi
  */
 
-#ifdef USB_MIDI
-
 #include <usb_midi.h>
 
 #include <string.h>
 #include <stdint.h>
 #include <libmaple/nvic.h>
-#include <libmaple/usb_midi_device.h>
+#include <usb_midi_device.h>
 #include <libmaple/usb.h>
 
 #include <wirish.h>
@@ -528,6 +526,3 @@ void USBMidi::handleStop(void) {}
 void USBMidi::handleActiveSense(void) {}
 void USBMidi::handleReset(void) {}
   */
-
-
-#endif

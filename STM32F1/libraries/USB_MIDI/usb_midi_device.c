@@ -34,9 +34,7 @@
  * the result made cleaner.
  */
 
-#ifdef USB_MIDI
-
-#include <libmaple/usb_midi_device.h>
+#include <usb_midi_device.h>
 #include <MidiSpecs.h>
 #include <MinSysex.h>
 
@@ -74,16 +72,16 @@
 static void midiDataTxCb(void);
 static void midiDataRxCb(void);
 
-static void usbInit(void);
-static void usbReset(void);
-static RESULT usbDataSetup(uint8 request);
-static RESULT usbNoDataSetup(uint8 request);
-static RESULT usbGetInterfaceSetting(uint8 interface, uint8 alt_setting);
-static uint8* usbGetDeviceDescriptor(uint16 length);
-static uint8* usbGetConfigDescriptor(uint16 length);
-static uint8* usbGetStringDescriptor(uint16 length);
-static void usbSetConfiguration(void);
-static void usbSetDeviceAddress(void);
+static void midiusbInit(void);
+static void midiusbReset(void);
+static RESULT midiusbDataSetup(uint8 request);
+static RESULT midiusbNoDataSetup(uint8 request);
+static RESULT midiusbGetInterfaceSetting(uint8 interface, uint8 alt_setting);
+static uint8* midiusbGetDeviceDescriptor(uint16 length);
+static uint8* midiusbGetConfigDescriptor(uint16 length);
+static uint8* midiusbGetStringDescriptor(uint16 length);
+static void midiusbSetConfiguration(void);
+static void midiusbSetDeviceAddress(void);
 
 /*
  * Descriptors
@@ -91,11 +89,11 @@ static void usbSetDeviceAddress(void);
 
 /* FIXME move to Wirish */
 #define LEAFLABS_ID_VENDOR                0x1EAF
-#define MAPLE_ID_PRODUCT                  0x0014
+#define MAPLE_MIDI_ID_PRODUCT             0x0014
 /* 0x7D = ED/FREE next two DIGITS MUST BE LESS THAN 0x7f */
 
 static const usb_descriptor_device usbMIDIDescriptor_Device =
-    USB_MIDI_DECLARE_DEV_DESC(LEAFLABS_ID_VENDOR, MAPLE_ID_PRODUCT);
+    USB_MIDI_DECLARE_DEV_DESC(LEAFLABS_ID_VENDOR, MAPLE_MIDI_ID_PRODUCT);
 
 typedef struct {
     usb_descriptor_config_header       Config_Header;
@@ -274,14 +272,14 @@ static const usb_descriptor_config usbMIDIDescriptor_Config = {
 
 /* Unicode language identifier: 0x0409 is US English */
 /* FIXME move to Wirish */
-static const usb_descriptor_string usbMIDIDescriptor_LangID = {
+static const usb_descriptor_string midiusbMIDIDescriptor_LangID = {
     .bLength         = USB_DESCRIPTOR_STRING_LEN(1),
     .bDescriptorType = USB_DESCRIPTOR_TYPE_STRING,
     .bString         = {0x09, 0x04},
 };
 
 /* FIXME move to Wirish */
-static const usb_descriptor_string usbMIDIDescriptor_iManufacturer = {
+static const usb_descriptor_string midiusbMIDIDescriptor_iManufacturer = {
     .bLength = USB_DESCRIPTOR_STRING_LEN(8),
     .bDescriptorType = USB_DESCRIPTOR_TYPE_STRING,
     .bString = {'D', 0, 'i', 0, 'r', 0, 'o', 0,
@@ -289,7 +287,7 @@ static const usb_descriptor_string usbMIDIDescriptor_iManufacturer = {
 };
 
 /* FIXME move to Wirish */
-static const usb_descriptor_string usbMIDIDescriptor_iProduct = {
+static const usb_descriptor_string midiusbMIDIDescriptor_iProduct = {
     .bLength = USB_DESCRIPTOR_STRING_LEN(10),
     .bDescriptorType = USB_DESCRIPTOR_TYPE_STRING,
   //  .bString = {'M', 0, 'a', 0, 'p', 0, 'l', 0, 'e', 0, ' ', 0, 'M', 0, 'I', 0, 'D', 0, 'I', 0},
@@ -297,37 +295,37 @@ static const usb_descriptor_string usbMIDIDescriptor_iProduct = {
 };
 
 /* FIXME move to Wirish */
-static const usb_descriptor_string usbMIDIDescriptor_iInterface = {
+static const usb_descriptor_string midiusbMIDIDescriptor_iInterface = {
     .bLength = USB_DESCRIPTOR_STRING_LEN(4),
     .bDescriptorType = USB_DESCRIPTOR_TYPE_STRING,
     .bString = {'M', 0, 'I', 0, 'D', 0, 'I', 0},
 };
 
 /* FIXME move to Wirish */
-static const usb_descriptor_string usbMIDIDescriptor_iJack1 = {
+static const usb_descriptor_string midiusbMIDIDescriptor_iJack1 = {
     .bLength = USB_DESCRIPTOR_STRING_LEN(5),
     .bDescriptorType = USB_DESCRIPTOR_TYPE_STRING,
     .bString = {'J', 0, 'a', 0, 'c', 0, 'k', 0, '1', 0},
 };
 
 
-static ONE_DESCRIPTOR Device_Descriptor = {
+static ONE_DESCRIPTOR MIDI_Device_Descriptor = {
     (uint8*)&usbMIDIDescriptor_Device,
     sizeof(usb_descriptor_device)
 };
 
-static ONE_DESCRIPTOR Config_Descriptor = {
+static ONE_DESCRIPTOR MIDI_Config_Descriptor = {
     (uint8*)&usbMIDIDescriptor_Config,
     sizeof(usb_descriptor_config)
 };
 
-#define N_STRING_DESCRIPTORS 5
-static ONE_DESCRIPTOR String_Descriptor[N_STRING_DESCRIPTORS] = {
-    {(uint8*)&usbMIDIDescriptor_LangID,       USB_DESCRIPTOR_STRING_LEN(1)},
-    {(uint8*)&usbMIDIDescriptor_iManufacturer,USB_DESCRIPTOR_STRING_LEN(8)},
-    {(uint8*)&usbMIDIDescriptor_iProduct,     USB_DESCRIPTOR_STRING_LEN(10)},
-    {(uint8*)&usbMIDIDescriptor_iInterface,     USB_DESCRIPTOR_STRING_LEN(4)},
-    {(uint8*)&usbMIDIDescriptor_iJack1,     USB_DESCRIPTOR_STRING_LEN(5)}
+#define N_MIDI_STRING_DESCRIPTORS 5
+static ONE_DESCRIPTOR MIDI_String_Descriptor[N_MIDI_STRING_DESCRIPTORS] = {
+    {(uint8*)&midiusbMIDIDescriptor_LangID,       USB_DESCRIPTOR_STRING_LEN(1)},
+    {(uint8*)&midiusbMIDIDescriptor_iManufacturer,USB_DESCRIPTOR_STRING_LEN(8)},
+    {(uint8*)&midiusbMIDIDescriptor_iProduct,     USB_DESCRIPTOR_STRING_LEN(10)},
+    {(uint8*)&midiusbMIDIDescriptor_iInterface,     USB_DESCRIPTOR_STRING_LEN(4)},
+    {(uint8*)&midiusbMIDIDescriptor_iJack1,     USB_DESCRIPTOR_STRING_LEN(5)}
 };
 
 /*
@@ -362,7 +360,7 @@ volatile uint8 myMidiID[] = { LEAFLABS_MMA_VENDOR_1,LEAFLABS_MMA_VENDOR_2,LEAFLA
  * Endpoint callbacks
  */
 
-static void (*ep_int_in[7])(void) =
+static void (*midi_ep_int_in[7])(void) =
     {midiDataTxCb,
      NOP_Process,
      NOP_Process,
@@ -371,7 +369,7 @@ static void (*ep_int_in[7])(void) =
      NOP_Process,
      NOP_Process};
 
-static void (*ep_int_out[7])(void) =
+static void (*midi_ep_int_out[7])(void) =
     {NOP_Process,
      midiDataRxCb,
      NOP_Process,
@@ -395,30 +393,30 @@ __weak DEVICE Device_Table = {
 
 #define MAX_PACKET_SIZE            0x40  /* 64B, maximum for USB FS Devices */
 __weak DEVICE_PROP Device_Property = {
-    .Init                        = usbInit,
-    .Reset                       = usbReset,
+    .Init                        = midiusbInit,
+    .Reset                       = midiusbReset,
     .Process_Status_IN           = NOP_Process,
     .Process_Status_OUT          = NOP_Process,
-    .Class_Data_Setup            = usbDataSetup,
-    .Class_NoData_Setup          = usbNoDataSetup,
-    .Class_Get_Interface_Setting = usbGetInterfaceSetting,
-    .GetDeviceDescriptor         = usbGetDeviceDescriptor,
-    .GetConfigDescriptor         = usbGetConfigDescriptor,
-    .GetStringDescriptor         = usbGetStringDescriptor,
+    .Class_Data_Setup            = midiusbDataSetup,
+    .Class_NoData_Setup          = midiusbNoDataSetup,
+    .Class_Get_Interface_Setting = midiusbGetInterfaceSetting,
+    .GetDeviceDescriptor         = midiusbGetDeviceDescriptor,
+    .GetConfigDescriptor         = midiusbGetConfigDescriptor,
+    .GetStringDescriptor         = midiusbGetStringDescriptor,
     .RxEP_buffer                 = NULL,
     .MaxPacketSize               = MAX_PACKET_SIZE
 };
 
 __weak USER_STANDARD_REQUESTS User_Standard_Requests = {
     .User_GetConfiguration   = NOP_Process,
-    .User_SetConfiguration   = usbSetConfiguration,
+    .User_SetConfiguration   = midiusbSetConfiguration,
     .User_GetInterface       = NOP_Process,
     .User_SetInterface       = NOP_Process,
     .User_GetStatus          = NOP_Process,
     .User_ClearFeature       = NOP_Process,
     .User_SetEndPointFeature = NOP_Process,
     .User_SetDeviceFeature   = NOP_Process,
-    .User_SetDeviceAddress   = usbSetDeviceAddress
+    .User_SetDeviceAddress   = midiusbSetDeviceAddress
 };
 
 /*
@@ -433,7 +431,7 @@ void usb_midi_enable(gpio_dev *disc_dev, uint8 disc_bit) {
     gpio_write_bit(disc_dev, disc_bit, 0);
 
     /* Initialize the USB peripheral. */
-    usb_init_usblib(USBLIB, ep_int_in, ep_int_out);
+    usb_init_usblib(USBLIB, midi_ep_int_in, midi_ep_int_out);
 }
 
 void usb_midi_disable(gpio_dev *disc_dev, uint8 disc_bit) {
@@ -564,7 +562,7 @@ static void midiDataRxCb(void) {
 }
 
 /* NOTE: Nothing specific to this device class in this function, move to usb_lib */
-static void usbInit(void) {
+static void midiusbInit(void) {
     pInformation->Current_Configuration = 0;
 
     USB_BASE->CNTR = USB_CNTR_FRES;
@@ -584,7 +582,7 @@ static void usbInit(void) {
 }
 
 #define BTABLE_ADDRESS        0x00
-static void usbReset(void) {
+static void midiusbReset(void) {
     pInformation->Current_Configuration = 0;
 
     /* current feature is current bmAttributes */
@@ -626,7 +624,7 @@ static void usbReset(void) {
     rx_offset = 0;
 }
 
-static RESULT usbDataSetup(uint8 request) {
+static RESULT midiusbDataSetup(uint8 request) {
     uint8* (*CopyRoutine)(uint16) = 0;
 
     if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
@@ -643,7 +641,7 @@ static RESULT usbDataSetup(uint8 request) {
     return USB_SUCCESS;
 }
 
-static RESULT usbNoDataSetup(uint8 request) {
+static RESULT midiusbNoDataSetup(uint8 request) {
     RESULT ret = USB_UNSUPPORT;
 
     if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
@@ -651,7 +649,7 @@ static RESULT usbNoDataSetup(uint8 request) {
     return ret;
 }
 
-static RESULT usbGetInterfaceSetting(uint8 interface, uint8 alt_setting) {
+static RESULT midiusbGetInterfaceSetting(uint8 interface, uint8 alt_setting) {
     if (alt_setting > 0) {
         return USB_UNSUPPORT;
     } else if (interface > 1) {
@@ -661,30 +659,30 @@ static RESULT usbGetInterfaceSetting(uint8 interface, uint8 alt_setting) {
     return USB_SUCCESS;
 }
 
-static uint8* usbGetDeviceDescriptor(uint16 length) {
-    return Standard_GetDescriptorData(length, &Device_Descriptor);
+static uint8* midiusbGetDeviceDescriptor(uint16 length) {
+    return Standard_GetDescriptorData(length, &MIDI_Device_Descriptor);
 }
 
-static uint8* usbGetConfigDescriptor(uint16 length) {
-    return Standard_GetDescriptorData(length, &Config_Descriptor);
+static uint8* midiusbGetConfigDescriptor(uint16 length) {
+    return Standard_GetDescriptorData(length, &MIDI_Config_Descriptor);
 }
 
-static uint8* usbGetStringDescriptor(uint16 length) {
+static uint8* midiusbGetStringDescriptor(uint16 length) {
     uint8 wValue0 = pInformation->USBwValue0;
 
-    if (wValue0 > N_STRING_DESCRIPTORS) {
+    if (wValue0 > N_MIDI_STRING_DESCRIPTORS) {
         return NULL;
     }
-    return Standard_GetDescriptorData(length, &String_Descriptor[wValue0]);
+    return Standard_GetDescriptorData(length, &MIDI_String_Descriptor[wValue0]);
 }
 
-static void usbSetConfiguration(void) {
+static void midiusbSetConfiguration(void) {
     if (pInformation->Current_Configuration != 0) {
         USBLIB->state = USB_CONFIGURED;
     }
 }
 
-static void usbSetDeviceAddress(void) {
+static void midiusbSetDeviceAddress(void) {
     USBLIB->state = USB_ADDRESSED;
 }
 // .............THIS IS NOT WORKING YET................
@@ -764,5 +762,3 @@ uint8_t iSysHexLine(uint8_t rectype, uint16_t address, uint8_t *payload,uint8_t 
     buffer[i++]=0xf7;
     return i+thirdone;
 }
-
-#endif

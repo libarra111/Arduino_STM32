@@ -31,14 +31,17 @@
  * IMPORTANT: this API is unstable, and may change without notice.
  */
 
-#ifdef USB_SERIAL
-
 #ifndef _LIBMAPLE_USB_CDCACM_H_
 #define _LIBMAPLE_USB_CDCACM_H_
 
 #include <libmaple/libmaple_types.h>
 #include <libmaple/gpio.h>
 #include <libmaple/usb.h>
+
+/* usb_lib headers */
+#include "usb_type.h"
+#include "usb_core.h"
+#include "usb_def.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -177,8 +180,6 @@ static __always_inline void usb_cdcacm_remove_hooks(unsigned hook_flags) {
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
 
 #endif

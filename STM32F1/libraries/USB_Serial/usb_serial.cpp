@@ -27,16 +27,14 @@
 /**
  * @brief USB virtual serial terminal
  */
- 
-#ifdef USB_SERIAL
 
-#include "usb_serial.h"
+#include <usb_serial.h>
 
 #include "string.h"
 #include "stdint.h"
 
 #include <libmaple/nvic.h>
-#include <libmaple/usb_cdcacm.h>
+#include <usb_cdcacm.h>
 #include <libmaple/usb.h>
 #include <libmaple/iwdg.h>
 
@@ -65,7 +63,7 @@ USBSerial::USBSerial(void) {
 
 void USBSerial::begin(void) {
 #if BOARD_HAVE_SERIALUSB
-    usb_cdcacm_enable(BOARD_USB_DISC_DEV, BOARD_USB_DISC_BIT);
+	usb_cdcacm_enable(BOARD_USB_DISC_DEV, BOARD_USB_DISC_BIT);
     usb_cdcacm_set_hooks(USB_CDCACM_HOOK_RX, rxHook);
     usb_cdcacm_set_hooks(USB_CDCACM_HOOK_IFACE_SETUP, ifaceSetupHook);
 #endif
@@ -354,5 +352,3 @@ static void rxHook(unsigned hook, void *ignored) {
 }
 
 #endif  // BOARD_HAVE_SERIALUSB
-
-#endif //USB_SERIAL

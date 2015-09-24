@@ -17,14 +17,14 @@
 /**
  * @brief USB HID Keyboard device 
  */
-#ifdef USB_HID
 
 #include <usb_hid_device.h>
 
 #include <string.h>
 #include <stdint.h>
 #include <libmaple/nvic.h>
-#include <libmaple/usb_hid.h>
+//#include <libmaple/usb_setup.h>
+#include <usb_hid.h>
 #include <libmaple/usb.h>
 
 #include <wirish.h>
@@ -34,8 +34,6 @@
  */
 
 #define USB_TIMEOUT 50
-
-
 
 HIDDevice::HIDDevice(void){
 	
@@ -446,6 +444,3 @@ HIDDevice HID;
 HIDMouse Mouse;
 HIDKeyboard Keyboard;
 HIDJoystick Joystick;
-
-
-#endif
