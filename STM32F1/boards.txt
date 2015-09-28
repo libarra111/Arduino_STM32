@@ -186,6 +186,7 @@ genericSTM32F103C.menu.upload_method.DFUUploadMethod.upload.altID=2
 genericSTM32F103C.menu.upload_method.serialMethod=Serial
 genericSTM32F103C.menu.upload_method.serialMethod.upload.protocol=maple_serial
 genericSTM32F103C.menu.upload_method.serialMethod.upload.tool=serial_upload
+genericSTM32F103C.menu.upload_method.serialMethod.build.upload_flags=-DSERIAL_USB
 
 
 genericSTM32F103C.menu.upload_method.STLinkMethod=STLink
