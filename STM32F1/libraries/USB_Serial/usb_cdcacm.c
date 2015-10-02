@@ -43,6 +43,11 @@
 #include "usb_lib_globals.h"
 #include "usb_reg_map.h"
 
+/* usb_lib headers */
+#include "usb_type.h"
+#include "usb_core.h"
+#include "usb_def.h"
+
 /******************************************************************************
  ******************************************************************************
  ***

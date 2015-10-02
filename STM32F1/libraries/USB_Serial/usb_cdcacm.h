@@ -38,11 +38,6 @@
 #include <libmaple/gpio.h>
 #include <libmaple/usb.h>
 
-/* usb_lib headers */
-#include "usb_type.h"
-#include "usb_core.h"
-#include "usb_def.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
