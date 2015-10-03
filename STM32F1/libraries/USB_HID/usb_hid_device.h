@@ -20,8 +20,8 @@
  * @brief Wirish USB HID port (HID USB).
  */
 
-#ifndef _WIRISH_USB_HID_KEYBOARD_H_
-#define _WIRISH_USB_HID_KEYBOARD_H_
+#ifndef _WIRISH_USB_HID_H_
+#define _WIRISH_USB_HID_H_
 
 #include <Print.h>
 #include <boards.h>
