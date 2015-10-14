@@ -48,7 +48,7 @@ build.extra_flags= {build.upload_flags} {build.cpu_flags} {build.hs_flag} {build
 
 
 # added this line so the compiler receives a valid argument for usb type even if the selected board has no usb type menu
-build.usbtype=USB_NONE
+build.usbtype=NO_USB
 
 
 # These can be overridden in platform.local.txt

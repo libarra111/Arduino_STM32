@@ -17,13 +17,51 @@
  * @brief Wirish USB HID port (HID USB).
  */
  
-#ifdef USB_HID
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
 
-#ifndef _WIRISH_USB_HID_KEYBOARD_H_
-#define _WIRISH_USB_HID_KEYBOARD_H_
+#ifndef _WIRISH_USB_HID_H_
+#define _WIRISH_USB_HID_H_
 
 #include <Print.h>
 #include <boards.h>
+
+class HIDDevice{
+private:
+	bool enabled = false;
+public:
+	HIDDevice(void);
+	void begin(void);
+	void end(void);
+};
+
+
+//================================================================================
+//================================================================================
+//	Mouse
+
+#define MOUSE_LEFT 1
+#define MOUSE_RIGHT 2
+#define MOUSE_MIDDLE 4
+#define MOUSE_ALL (MOUSE_LEFT | MOUSE_RIGHT | MOUSE_MIDDLE)
+
+class HIDMouse{
+private:
+	uint8_t _buttons;
+	void buttons(uint8_t b);
+public:
+	HIDMouse(void);
+	void begin(void);
+	void end(void);
+	void click(uint8_t b = MOUSE_LEFT);
+	void move(signed char x, signed char y, signed char wheel = 0);
+	void press(uint8_t b = MOUSE_LEFT);		// press LEFT by default
+	void release(uint8_t b = MOUSE_LEFT);	// release LEFT by default
+	bool isPressed(uint8_t b = MOUSE_ALL);	// check all buttons by default
+};
+
+//================================================================================
+//================================================================================
+//	Keyboard
 
 #define SHIFT 0x80
 const uint8_t _asciimap[128] =
@@ -159,43 +197,6 @@ const uint8_t _asciimap[128] =
 	0				// DEL
 };
 
-class HIDDevice{
-private:
-	bool enabled = false;
-public:
-	HIDDevice(void);
-	void begin(void);
-	void end(void);
-};
-
-//================================================================================
-//================================================================================
-//	Mouse
-
-#define MOUSE_LEFT 1
-#define MOUSE_RIGHT 2
-#define MOUSE_MIDDLE 4
-#define MOUSE_ALL (MOUSE_LEFT | MOUSE_RIGHT | MOUSE_MIDDLE)
-
-class HIDMouse{
-private:
-	uint8_t _buttons;
-	void buttons(uint8_t b);
-public:
-	HIDMouse(void);
-	void begin(void);
-	void end(void);
-	void click(uint8_t b = MOUSE_LEFT);
-	void move(signed char x, signed char y, signed char wheel = 0);
-	void press(uint8_t b = MOUSE_LEFT);		// press LEFT by default
-	void release(uint8_t b = MOUSE_LEFT);	// release LEFT by default
-	bool isPressed(uint8_t b = MOUSE_ALL);	// check all buttons by default
-};
-
-//================================================================================
-//================================================================================
-//	Keyboard
-
 #define KEY_LEFT_CTRL		0x80
 #define KEY_LEFT_SHIFT		0x81
 #define KEY_LEFT_ALT		0x82
@@ -253,6 +254,7 @@ public:
 	virtual void releaseAll(void);
 };
 
+
 //================================================================================
 //================================================================================
 //	Joystick
@@ -278,9 +280,13 @@ public:
 };
 
 extern HIDDevice HID;
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 extern HIDMouse Mouse;
 extern HIDKeyboard Keyboard;
+#endif
+#if defined(USB_HID_KMJ) || defined(USB_HID_J)
 extern HIDJoystick Joystick;
+#endif
 
 #endif
 
