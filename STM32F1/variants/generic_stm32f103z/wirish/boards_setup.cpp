@@ -83,7 +83,7 @@ namespace wirish {
       
 
 	
-#ifdef SERIAL_USB 
+#ifdef USB_HARDWARE 
 #ifdef GENERIC_BOOTLOADER			
 			//Reset the USB interface on generic boards - developed by Victor PV
 			gpio_set_mode(PIN_MAP[PA12].gpio_device, PIN_MAP[PA12].gpio_bit, GPIO_OUTPUT_PP);

@@ -33,7 +33,7 @@
  * the result made cleaner.
  */
 
-#ifdef USB_HID
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
  
  
 #include <libmaple/usb_hid.h>
@@ -92,6 +92,7 @@ static void usbSetDeviceAddress(void);
  
 
 const uint8_t hid_report_descriptor[] = {
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 	//	Mouse
     0x05, 0x01,						// USAGE_PAGE (Generic Desktop)	// 54
     0x09, 0x02,						// USAGE (Mouse)
@@ -151,7 +152,9 @@ const uint8_t hid_report_descriptor[] = {
     0x29, 0x65,						//   USAGE_MAXIMUM (Keyboard Application)
     0x81, 0x00,						//   INPUT (Data,Ary,Abs)
     0xc0,      						// END_COLLECTION
+#endif
 	
+#if defined(USB_HID_KMJ) || defined(USB_HID_J)	
 	//  Joystick
 	0x05, 0x01,						// Usage Page (Generic Desktop)
 	0x09, 0x04,						// Usage (Joystick)
@@ -196,6 +199,7 @@ const uint8_t hid_report_descriptor[] = {
 	0x09, 0x36,						// Usage (Slider)
 	0x81, 0x02,						// Input (variable,absolute)
     0xC0,                           // End Collection
+#endif
 	
 	
 #ifdef USB_RAWHID

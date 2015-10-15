@@ -31,7 +31,7 @@
  * IMPORTANT: this API is unstable, and may change without notice.
  */
 
-#ifdef USB_HID
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
  
 #ifndef _LIBMAPLE_USB_HID_H_
 #define _LIBMAPLE_USB_HID_H_

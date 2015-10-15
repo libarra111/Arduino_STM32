@@ -75,7 +75,7 @@ public:
     uint8 pending();
 };
 
-#ifdef SERIAL_USB 
+#ifdef USB_HARDWARE 
 	extern USBSerial Serial;
 #endif
 

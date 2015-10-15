@@ -17,7 +17,8 @@
 /**
  * @brief USB HID Keyboard device 
  */
-#ifdef USB_HID
+ 
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
 
 #include <usb_hid_device.h>
 
@@ -34,8 +35,6 @@
  */
 
 #define USB_TIMEOUT 50
-
-
 
 HIDDevice::HIDDevice(void){
 	
@@ -443,9 +442,13 @@ void HIDJoystick::hat(int16_t dir){
 
 
 HIDDevice HID;
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 HIDMouse Mouse;
 HIDKeyboard Keyboard;
+#endif
+#if defined(USB_HID_KMJ) || defined(USB_HID_J)
 HIDJoystick Joystick;
+#endif
 
 
 #endif
