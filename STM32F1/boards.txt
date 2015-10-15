@@ -194,6 +194,7 @@ genericSTM32F103C.menu.upload_method.DFUUploadMethod.upload.altID=2
 genericSTM32F103C.menu.upload_method.serialMethod=Serial
 genericSTM32F103C.menu.upload_method.serialMethod.upload.protocol=maple_serial
 genericSTM32F103C.menu.upload_method.serialMethod.upload.tool=serial_upload
+genericSTM32F103C.menu.upload_method.serialMethod.build.upload_flags=-DSERIAL_USB
 
 
 genericSTM32F103C.menu.upload_method.STLinkMethod=STLink
@@ -205,7 +206,7 @@ genericSTM32F103C.menu.upload_method.STLinkMethod.build.upload_flags=-DCONFIG_MA
 genericSTM32F103C.menu.upload_method.BMPMethod=BMP (Black Magic Probe)
 genericSTM32F103C.menu.upload_method.BMPMethod.upload.protocol=gdb_bmp
 genericSTM32F103C.menu.upload_method.BMPMethod.upload.tool=bmp_upload
-genericSTM32F103C.menu.upload_method.BMPMethod.build.upload_flags=-DCONFIG_MAPLE_MINI_NO_DISABLE_DEBUG
+genericSTM32F103C.menu.upload_method.BMPMethod.build.upload_flags=-DCONFIG_MAPLE_MINI_NO_DISABLE_DEBUG -DSERIAL_USB
 
 #--USB
 genericSTM32F103C.menu.usb.serial=Serial
