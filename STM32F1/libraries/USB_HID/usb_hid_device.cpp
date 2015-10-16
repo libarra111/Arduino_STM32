@@ -17,13 +17,16 @@
 /**
  * @brief USB HID Keyboard device 
  */
+ 
+#include <usb_hid_options.h>
+ 
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
 
 #include <usb_hid_device.h>
 
 #include <string.h>
 #include <stdint.h>
 #include <libmaple/nvic.h>
-//#include <libmaple/usb_setup.h>
 #include <usb_hid.h>
 #include <libmaple/usb.h>
 
@@ -441,6 +444,13 @@ void HIDJoystick::hat(int16_t dir){
 
 
 HIDDevice HID;
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 HIDMouse Mouse;
 HIDKeyboard Keyboard;
+#endif
+#if defined(USB_HID_KMJ) || defined(USB_HID_J)
 HIDJoystick Joystick;
+#endif
+
+
+#endif

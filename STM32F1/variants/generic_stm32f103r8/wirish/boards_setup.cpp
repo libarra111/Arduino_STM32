@@ -80,7 +80,7 @@ namespace wirish {
         }
 
         __weak void board_setup_usb(void) {
-#ifdef SERIAL_USB
+#ifdef USB_HARDWARE
 			
 #ifdef GENERIC_BOOTLOADER			
 			//Reset the USB interface on generic boards - developed by Victor PV

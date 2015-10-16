@@ -31,6 +31,10 @@
  * IMPORTANT: this API is unstable, and may change without notice.
  */
  
+#include <usb_hid_options.h>
+ 
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
+ 
 #ifndef _LIBMAPLE_USB_HID_H_
 #define _LIBMAPLE_USB_HID_H_
 
@@ -152,6 +156,8 @@ static uint8 *HID_GetHIDDescriptor(uint16 Length);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif

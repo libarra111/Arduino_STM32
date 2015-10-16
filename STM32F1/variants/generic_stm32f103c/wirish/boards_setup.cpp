@@ -82,7 +82,7 @@ namespace wirish {
         }
 
         __weak void board_setup_usb(void) {
-#if defined(SERIAL_USB) //&& defined(GENERIC_BOOTLOADER)	
+#if defined(USB_HARDWARE) //&& defined(GENERIC_BOOTLOADER)	
 			//Reset the USB interface on generic boards - developed by Victor PV
 			gpio_set_mode(PIN_MAP[PA12].gpio_device, PIN_MAP[PA12].gpio_bit, GPIO_OUTPUT_PP);
 			gpio_write_bit(PIN_MAP[PA12].gpio_device, PIN_MAP[PA12].gpio_bit,0);
@@ -92,7 +92,7 @@ namespace wirish {
 #endif//
 
         	/*
-#if defined(SERIAL_USB) && defined(USB_SERIAL)
+#if defined(USB_HARDWARE) && defined(USB_SERIAL)
 			
 #ifdef GENERIC_BOOTLOADER			
 			//Reset the USB interface on generic boards - developed by Victor PV
@@ -104,7 +104,7 @@ namespace wirish {
 #endif			
 			Serial.begin();// Roger Clark. Changed SerialUSB to Serial for Arduino sketch compatibility
 #endif
-#if defined(SERIAL_USB) && defined(USB_HID)
+#if defined(USB_HARDWARE) && defined(USB_HID)
 			
 #ifdef GENERIC_BOOTLOADER			
 			//Reset the USB interface on generic boards - developed by Victor PV
@@ -116,7 +116,7 @@ namespace wirish {
 #endif			
 			HID.begin();
 #endif
-#if  defined(SERIAL_USB) && defined(USB_MIDI)
+#if  defined(USB_HARDWARE) && defined(USB_MIDI)
 #ifdef GENERIC_BOOTLOADER			
 			//Reset the USB interface on generic boards - developed by Victor PV
 			gpio_set_mode(PIN_MAP[PA12].gpio_device, PIN_MAP[PA12].gpio_bit, GPIO_OUTPUT_PP);

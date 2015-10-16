@@ -211,7 +211,7 @@ uint8 USBSerial::getRTS(void) {
 }
 
 #if BOARD_HAVE_SERIALUSB
-	#ifdef SERIAL_USB 
+	#ifdef USB_HARDWARE 
 		USBSerial Serial;
 	#endif
 #endif
@@ -239,7 +239,7 @@ static void ifaceSetupHook(unsigned hook, void *requestvp) {
         return;
     }
 
-#ifdef SERIAL_USB 
+#ifdef USB_HARDWARE 
     // We need to see a negative edge on DTR before we start looking
     // for the in-band magic reset byte sequence.
     uint8 dtr = usb_cdcacm_get_dtr();
@@ -275,7 +275,7 @@ static void ifaceSetupHook(unsigned hook, void *requestvp) {
 }
 
 #define RESET_DELAY 100000
-#ifdef SERIAL_USB 
+#ifdef USB_HARDWARE 
 static void wait_reset(void) {
   delay_us(RESET_DELAY);
   nvic_sys_reset();
@@ -293,7 +293,7 @@ static void rxHook(unsigned hook, void *ignored) {
 
         if (usb_cdcacm_data_available() >= 4) {
             // The magic reset sequence is "1EAF".
-#ifdef SERIAL_USB 
+#ifdef USB_HARDWARE 
             static const uint8 magic[4] = {'1', 'E', 'A', 'F'};	
 #else
 	#if defined(BOOTLOADER_robotis)
@@ -314,7 +314,7 @@ static void rxHook(unsigned hook, void *ignored) {
                 }
             }
 
-#ifdef SERIAL_USB 
+#ifdef USB_HARDWARE 
             // Got the magic sequence -> reset, presumably into the bootloader.
             // Return address is wait_reset, but we must set the thumb bit.
             uintptr_t target = (uintptr_t)wait_reset | 0x1;
