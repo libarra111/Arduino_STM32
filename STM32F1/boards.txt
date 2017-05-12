@@ -29,8 +29,8 @@ mapleMini.menu.usb.hid_km=Keyboard + Mouse
 mapleMini.menu.usb.hid_km.build.usbtype=USB_HID_KM
 mapleMini.menu.usb.hid_j=Joystick
 mapleMini.menu.usb.hid_j.build.usbtype=USB_HID_J
-mapleMini.menu.usb.midi=MIDI
-mapleMini.menu.usb.midi.build.usbtype=USB_MIDI
+#mapleMini.menu.usb.midi=MIDI
+#mapleMini.menu.usb.midi.build.usbtype=USB_MIDI
 mapleMini.menu.usb.no_usb=No USB
 mapleMini.menu.usb.no_usb.build.usbtype=NO_USB
 
@@ -224,8 +224,8 @@ genericSTM32F103C.menu.usb.hid_km=Keyboard + Mouse
 genericSTM32F103C.menu.usb.hid_km.build.usbtype=USB_HID_KM
 genericSTM32F103C.menu.usb.hid_j=Joystick
 genericSTM32F103C.menu.usb.hid_j.build.usbtype=USB_HID_J
-genericSTM32F103C.menu.usb.midi=MIDI
-genericSTM32F103C.menu.usb.midi.build.usbtype=USB_MIDI
+#genericSTM32F103C.menu.usb.midi=MIDI
+#genericSTM32F103C.menu.usb.midi.build.usbtype=USB_MIDI
 
 
 ########################### Generic STM32F103R  ###########################

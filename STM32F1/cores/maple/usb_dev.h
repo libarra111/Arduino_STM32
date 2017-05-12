@@ -1,38 +1,44 @@
 /*
   Copyright (c) 2012 Arduino.  All right reserved.
+
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
   version 2.1 of the License, or (at your option) any later version.
+
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the GNU Lesser General Public License for more details.
+
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 /**
- * @brief Wirish USB HID port (HID USB).
+ * @brief Wirish Composite port.
  */
- 
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
 
-#ifndef _WIRISH_USB_HID_H_
-#define _WIRISH_USB_HID_H_
+#ifndef _WIRISH_USB_DEV_H_
+#define _WIRISH_USB_DEV_H_
+
+#ifndef NO_USB
 
 #include <Print.h>
 #include <boards.h>
+#include "Stream.h"
 
-class HIDDevice{
+class USBDevice{ // Libarra. USBDevice is the class used to initialize the device.
 private:
 	bool enabled = false;
 public:
-	HIDDevice(void);
+	USBDevice(void);
 	void begin(void);
 	void end(void);
 };
+
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) // Libarra. Delcaring HID classes according to the option selected
 
 
 //================================================================================
@@ -254,6 +260,9 @@ public:
 	virtual void releaseAll(void);
 };
 
+#endif //keyboard & mouse
+
+#if defined(USB_HID_KMJ) || defined(USB_HID_J)
 
 //================================================================================
 //================================================================================
@@ -279,15 +288,64 @@ public:
 	void hat(int16_t dir);
 };
 
-extern HIDDevice HID;
+#endif // joystic
+
+
+//================================================================================
+//================================================================================
+//	Virtual serial terminal.
+
+
+class USBSerial : public Stream {
+public:
+    USBSerial(void);
+
+    void begin(void);
+
+	// Roger Clark. Added dummy function so that existing Arduino sketches which specify baud rate will compile.
+	void begin(unsigned long);
+	void begin(unsigned long, uint8_t);
+    void end(void);
+
+	operator bool() { return true; } // Roger Clark. This is needed because in cardinfo.ino it does if (!Serial) . It seems to be a work around for the Leonardo that we needed to implement just to be compliant with the API
+
+    virtual int available(void);// Changed to virtual
+
+    uint32 read(void *buf, uint32 len);
+   // uint8  read(void);
+
+	// Roger Clark. added functions to support Arduino 1.0 API
+    virtual int peek(void);
+    virtual int read(void);
+    int availableForWrite(void);
+    virtual void flush(void);
+	
+	
+    size_t write(uint8);
+    size_t write(const char *str);
+    size_t write(const void*, uint32);
+
+    uint8 getRTS();
+    uint8 getDTR();
+    uint8 isConnected();
+    uint8 pending();
+};
+
+extern USBDevice USBDev;
+
+#ifdef USB_HARDWARE 
+extern USBSerial Serial;
+#endif
+
 #if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 extern HIDMouse Mouse;
 extern HIDKeyboard Keyboard;
 #endif
+
 #if defined(USB_HID_KMJ) || defined(USB_HID_J)
 extern HIDJoystick Joystick;
 #endif
 
-#endif
+#endif //NO_USB
 
 #endif

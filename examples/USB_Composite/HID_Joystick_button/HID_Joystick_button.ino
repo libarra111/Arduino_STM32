@@ -1,5 +1,3 @@
-#include <usb_hid_device.h>
-
 #define lPin 33
 #define bPin 32
 #define BUTTON_DEBOUNCE_DELAY 1
@@ -7,8 +5,8 @@
 int i=1, li=0;
 
 void setup() {
+	pinMode(bPin, INPUT);
 	pinMode(lPin, OUTPUT);
-	HID.begin();
 }
 
 void loop() {

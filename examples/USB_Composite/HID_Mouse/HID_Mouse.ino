@@ -8,7 +8,7 @@ bool isButtonPressed();
 void setup() {
   
   pinMode(lPin, OUTPUT);
-  
+  pinMode(bPin, INPUT);
 }
 
 void loop() {

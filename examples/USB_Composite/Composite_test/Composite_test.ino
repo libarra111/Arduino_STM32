@@ -1,21 +1,25 @@
-#define bPin 32
 #define lPin 33
+#define bPin 32
 #define BUTTON_DEBOUNCE_DELAY 1
+#define inc 32
 
 bool isButtonPressed();
 
 void setup() {
-
+  
   pinMode(lPin, OUTPUT);
-  pinMode(bPin, INPUT);
 }
 
 void loop() {
-  //delay(1000);
+  #if 0
   if(isButtonPressed()){
-    Keyboard.write(KEY_LEFT_GUI);
-    //Keyboard.print("Hello World !!!\n");
+    //Mouse.click(MOUSE_RIGHT);
+    //Mouse.click(MOUSE_LEFT);
+    Mouse.move(inc, inc, -5);
+    Serial.println("Hello World!!! ");
   }
+  #endif
+  
 }
 
 bool isButtonPressed() {
@@ -27,5 +31,3 @@ bool isButtonPressed() {
     }
     return false;
 }
-
-

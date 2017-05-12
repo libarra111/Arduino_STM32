@@ -40,9 +40,10 @@
 #include <libmaple/timer.h>
 
 #include <boards.h>
-#include <usb_serial.h>
-#include <usb_hid_device.h>
-#include <usb_midi.h>
+//#include <usb_serial.h>
+//#include <usb_hid_device.h>
+//#include <usb_midi.h>
+#include <usb_dev.h>
 
 // Allow boards to provide a PLL multiplier. This is useful for
 // e.g. STM32F100 value line MCUs, which use slower multipliers.
@@ -82,7 +83,8 @@ namespace wirish {
         }
 
         __weak void board_setup_usb(void) {
-#ifdef USB_HARDWARE 
+#ifdef USB_HARDWARE
+/*
 #ifdef USB_SERIAL
 			Serial.begin();// Roger Clark. Changed SerialUSB to Serial for Arduino sketch compatibility
 #endif
@@ -91,6 +93,10 @@ namespace wirish {
 #endif
 #ifdef USB_MIDI
 			MidiUSB.begin();
+#endif
+*/
+#ifndef NO_USB
+			USBDev.begin();// Libarra. Changed Serial to USBDev as it works with the new usb composite, although Serial.begin() still works.
 #endif
 #endif
 		}
