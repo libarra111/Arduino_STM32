@@ -26,17 +26,15 @@
 
 /**
  * @file libmaple/include/libmaple/usb_device.h
- * @brief USB Composite (VCOM, HID) support
+ * @brief USB Composite with CDC ACM and HID support
  *
  * IMPORTANT: this API is unstable, and may change without notice.
  */
- 
+
 #ifndef _LIBMAPLE_USB_DEVICE_H_
 #define _LIBMAPLE_USB_DEVICE_H_
 
 #ifndef NO_USB
-
-//#include <usb_options.h>
 
 #include <libmaple/libmaple_types.h>
 #include <libmaple/gpio.h>
@@ -61,53 +59,6 @@ extern "C" {
  * Descriptors, etc.
  */
 
-#define CDC_FUNCTIONAL_DESCRIPTOR_SIZE(DataSize) (3 + DataSize)
-#define CDC_FUNCTIONAL_DESCRIPTOR(DataSize)     \
-  struct {                                      \
-      uint8 bLength;                            \
-      uint8 bDescriptorType;                    \
-      uint8 SubType;                            \
-      uint8 Data[DataSize];                     \
-  } __packed
-
-#define USB_ENDPOINT_IN(addr)           ((addr) | 0x80)
-#define USB_ENDPOINT_TYPE_INTERRUPT     0x03
-
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. some HID definitions
-#define HID_ENDPOINT_INT 				1
- 
-#define HID_DESCRIPTOR_TYPE             0x21
- 
-#define REPORT_DESCRIPTOR               0x22
-
-typedef enum _HID_REQUESTS
-{
- 
-  GET_REPORT = 1,
-  GET_IDLE,
-  GET_PROTOCOL,
- 
-  SET_REPORT = 9,
-  SET_IDLE,
-  SET_PROTOCOL
- 
-} HID_REQUESTS;
-
-
-typedef struct
-{
-	uint8_t len;			// 9
-	uint8_t dtype;			// 0x21
-	uint8_t	versionL;		// 0x101
-	uint8_t	versionH;		// 0x101
-	uint8_t	country;
-	uint8_t	numDesc;
-	uint8_t	desctype;		// 0x22 report
-	uint8_t	descLenL;
-	uint8_t	descLenH;
-} HIDDescriptor;
-#endif
-
 typedef struct
 {
 	uint8_t bLength;
@@ -119,31 +70,30 @@ typedef struct
 	uint8_t bFunctionProtocol;
 	uint8_t iFunction;
 } IADescriptor;
+
+#define CDC_FUNCTIONAL_DESCRIPTOR_SIZE(DataSize) (3 + DataSize)
+#define CDC_FUNCTIONAL_DESCRIPTOR(DataSize)     \
+  struct {                                      \
+      uint8 bLength;                            \
+      uint8 bDescriptorType;                    \
+      uint8 SubType;                            \
+      uint8 Data[DataSize];                     \
+  } __packed
+
+#define USB_DEVICE_CLASS_CDC              0x02
+#define USB_DEVICE_SUBCLASS_CDC           0x00
 #define USB_INTERFACE_CLASS_CDC           0x02
-#define USB_INTERFACE_SUBCLASS_CDC_ACM    0x00
+#define USB_INTERFACE_SUBCLASS_CDC_ACM    0x02
 #define USB_INTERFACE_CLASS_DIC           0x0A
-#define USB_INTERFACE_CLASS_HID           0x03
-#define USB_INTERFACE_SUBCLASS_HID		  0x01
-
-
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. setting the values of the device class, subclass and protocol depending on the usb type
-#define USB_DEVICE_CLASS              	  0x00
-#define USB_DEVICE_SUBCLASS	           	  0x00
-#define DEVICE_PROTOCOL					  0x01
-#else
-#define USB_DEVICE_CLASS              	  0x02
-#define USB_DEVICE_SUBCLASS	           	  0x00
-#define DEVICE_PROTOCOL					  0x00
-#endif
 
 /*
  * Endpoint configuration
  */
 
-#define USB_CTRL_ENDP            		0
-#define USB_CTRL_RX_ADDR         		0x40
-#define USB_CTRL_TX_ADDR         		0x80
-#define USB_CTRL_EPSIZE          		0x40
+#define USB_CDCACM_CTRL_ENDP            0
+#define USB_CDCACM_CTRL_RX_ADDR         0x40
+#define USB_CDCACM_CTRL_TX_ADDR         0x80
+#define USB_CDCACM_CTRL_EPSIZE          0x40
 
 #define USB_CDCACM_TX_ENDP              1
 #define USB_CDCACM_TX_ADDR              0xC0
@@ -154,56 +104,8 @@ typedef struct
 #define USB_CDCACM_MANAGEMENT_EPSIZE    0x40
 
 #define USB_CDCACM_RX_ENDP              3
-#define USB_CDCACM_RX_ADDR              0x140
+#define USB_CDCACM_RX_ADDR              0x110
 #define USB_CDCACM_RX_EPSIZE            0x40
-
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. HID endpoint numbers, addresses, and sizes
-#define USB_HID_TX_ENDP              	4
-#define USB_HID_TX_ADDR              	0x180
-#define USB_HID_TX_EPSIZE            	0x40
-
-#define USB_HID_RX_ENDP              	5
-#define USB_HID_RX_ADDR              	0x1C0
-#define USB_HID_RX_EPSIZE            	0x40
-#endif
-
-#ifndef __cplusplus
-#define USB_DECLARE_DEV_DESC(vid, pid)                           \
-  {                                                                     \
-      .bLength            = sizeof(usb_descriptor_device),              \
-      .bDescriptorType    = USB_DESCRIPTOR_TYPE_DEVICE,                 \
-      .bcdUSB             = 0x0200,                                     \
-      .bDeviceClass       = USB_DEVICE_CLASS,                       	\
-      .bDeviceSubClass    = USB_DEVICE_SUBCLASS,                    	\
-      .bDeviceProtocol    = DEVICE_PROTOCOL,                            \
-      .bMaxPacketSize0    = 0x40,                                       \
-      .idVendor           = vid,                                        \
-      .idProduct          = pid,                                        \
-      .bcdDevice          = 0x0200,                                     \
-      .iManufacturer      = 0x01,                                       \
-      .iProduct           = 0x02,                                       \
-      .iSerialNumber      = 0x00,                                       \
-      .bNumConfigurations = 0x01,                                       \
- }
-#endif
-
-/*
- * HID interface
- */
-
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)// Libarra. HID functions
-uint32 usb_hid_tx(const uint8* buf, uint32 len);
-uint32 usb_hid_rx(uint8* buf, uint32 len);
-uint32 usb_hid_peek(uint8* buf, uint32 len);
-
-uint32 usb_hid_data_available(void); /* in RX buffer */
-uint16 usb_hid_get_pending(void);
-
-//static RESULT HID_SetProtocol(void);
-static uint8 *usbGetProtocolValue(uint16 Length);
-static uint8 *usbGetHIDReportDescriptor(uint16 Length);
-#endif
-
 
 /*
  * CDC ACM interface
@@ -221,6 +123,7 @@ uint32 usb_cdcacm_peek_ex(uint8* buf, uint32 offset, uint32 len);
 uint32 usb_cdcacm_data_available(void); /* in RX buffer */
 uint16 usb_cdcacm_get_pending(void);
 uint8 usb_is_transmitting(void);
+
 uint8 usb_cdcacm_get_dtr(void);
 uint8 usb_cdcacm_get_rts(void);
 
@@ -260,14 +163,129 @@ int usb_cdcacm_get_n_data_bits(void); /* bDataBits */
 
 void usb_cdcacm_set_hooks(unsigned hook_flags, void (*hook)(unsigned, void*));
 
-static __always_inline void usb_cdcacm_remove_hooks(unsigned hook_flags) {
+static inline __always_inline void usb_cdcacm_remove_hooks(unsigned hook_flags) {
     usb_cdcacm_set_hooks(hook_flags, 0);
 }
+
+
+ 
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. some HID definitions
+
+
+/*
+ * HID Requests
+ */
+
+typedef enum _HID_REQUESTS
+{
+ 
+  GET_REPORT = 1,
+  GET_IDLE,
+  GET_PROTOCOL,
+ 
+  SET_REPORT = 9,
+  SET_IDLE,
+  SET_PROTOCOL
+ 
+} HID_REQUESTS;
+ 
+
+/*
+ * HID Descriptors, etc.
+ */
+ 
+#define HID_ENDPOINT_INT 				1
+ 
+#define HID_DESCRIPTOR_TYPE             0x21
+ 
+#define REPORT_DESCRIPTOR               0x22
+
+
+typedef struct
+{
+	uint8_t len;			// 9
+	uint8_t dtype;			// 0x21
+	uint8_t	versionL;		// 0x101
+	uint8_t	versionH;		// 0x101
+	uint8_t	country;
+	uint8_t	numDesc;
+	uint8_t	desctype;		// 0x22 report
+	uint8_t	descLenL;
+	uint8_t	descLenH;
+} HIDDescriptor;
+
+
+#define USB_ENDPOINT_TYPE_INTERRUPT     0x03
+
+#define USB_INTERFACE_CLASS_HID           0x03
+#define USB_INTERFACE_SUBCLASS_HID		  0x01
+
+/*
+ * Endpoint configuration
+ */
+
+#define USB_HID_TX_ENDP              	4
+#define USB_HID_TX_ADDR              	0x180
+#define USB_HID_TX_EPSIZE            	0x40
+
+#define USB_HID_RX_ENDP              	5
+#define USB_HID_RX_ADDR              	0x1C0
+#define USB_HID_RX_EPSIZE            	0x40
+
+/*
+ * HID interface
+ */
+
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)// Libarra. HID functions
+uint32 usb_hid_tx(const uint8* buf, uint32 len);
+uint32 usb_hid_rx(uint8* buf, uint32 len);
+uint32 usb_hid_peek(uint8* buf, uint32 len);
+
+uint32 usb_hid_data_available(void); /* in RX buffer */
+uint16 usb_hid_get_pending(void);
+
+//static RESULT HID_SetProtocol(void);
+static uint8 *usbGetProtocolValue(uint16 Length);
+static uint8 *usbGetHIDReportDescriptor(uint16 Length);
+#endif
+
+#endif
+
+
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. setting the values of the device class, subclass and protocol depending on the usb type
+#define USB_DEVICE_CLASS              	  0x00
+#define USB_DEVICE_SUBCLASS	           	  0x00
+#define DEVICE_PROTOCOL					  0x01
+#else
+#define USB_DEVICE_CLASS              	  0x02
+#define USB_DEVICE_SUBCLASS	           	  0x00
+#define DEVICE_PROTOCOL					  0x00
+#endif
+
+#ifndef __cplusplus
+#define USB_DECLARE_DEV_DESC(vid, pid)                           \
+  {                                                                     \
+      .bLength            = sizeof(usb_descriptor_device),              \
+      .bDescriptorType    = USB_DESCRIPTOR_TYPE_DEVICE,                 \
+      .bcdUSB             = 0x0200,                                     \
+      .bDeviceClass       = USB_DEVICE_CLASS,                       	\
+      .bDeviceSubClass    = USB_DEVICE_SUBCLASS,                    	\
+      .bDeviceProtocol    = DEVICE_PROTOCOL,                            \
+      .bMaxPacketSize0    = 0x40,                                       \
+      .idVendor           = vid,                                        \
+      .idProduct          = pid,                                        \
+      .bcdDevice          = 0x0200,                                     \
+      .iManufacturer      = 0x01,                                       \
+      .iProduct           = 0x02,                                       \
+      .iSerialNumber      = 0x00,                                       \
+      .bNumConfigurations = 0x01,                                       \
+ }
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // NO_USB
+#endif
 
 #endif

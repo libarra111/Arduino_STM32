@@ -1,23 +1,31 @@
-/*
-  Copyright (c) 2012 Arduino.  All right reserved.
-
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
-
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  See the GNU Lesser General Public License for more details.
-
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*/
+/******************************************************************************
+ * The MIT License
+ *
+ * Copyright (c) 2010 Perry Hung.
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *****************************************************************************/
 
 /**
- * @brief Wirish Composite port.
+ * @brief Wirish USB Device (Composite).
  */
 
 #ifndef _WIRISH_USB_DEV_H_
@@ -25,9 +33,15 @@
 
 #ifndef NO_USB
 
-#include <Print.h>
-#include <boards.h>
+#include "Print.h"
+#include "boards.h"
 #include "Stream.h"
+
+/**
+ * @brief USB Device.
+ */
+ 
+ 
 
 class USBDevice{ // Libarra. USBDevice is the class used to initialize the device.
 private:
@@ -38,8 +52,15 @@ public:
 	void end(void);
 };
 
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) // Libarra. Delcaring HID classes according to the option selected
 
+/*
+ * HID
+ */
+ 
+// Libarra. Delcaring HID classes according to the option selected
+
+
+#if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 
 //================================================================================
 //================================================================================
@@ -294,8 +315,7 @@ public:
 //================================================================================
 //================================================================================
 //	Virtual serial terminal.
-
-
+ 
 class USBSerial : public Stream {
 public:
     USBSerial(void);
@@ -311,7 +331,7 @@ public:
 
     virtual int available(void);// Changed to virtual
 
-    uint32 read(void *buf, uint32 len);
+    uint32 read(uint8 * buf, uint32 len);
    // uint8  read(void);
 
 	// Roger Clark. added functions to support Arduino 1.0 API
@@ -323,13 +343,16 @@ public:
 	
     size_t write(uint8);
     size_t write(const char *str);
-    size_t write(const void*, uint32);
+    size_t write(const uint8*, uint32);
 
     uint8 getRTS();
     uint8 getDTR();
     uint8 isConnected();
     uint8 pending();
 };
+
+
+//Instances
 
 extern USBDevice USBDev;
 
@@ -349,3 +372,4 @@ extern HIDJoystick Joystick;
 #endif //NO_USB
 
 #endif
+

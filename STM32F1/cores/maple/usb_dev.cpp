@@ -40,22 +40,53 @@
 ** SOFTWARE.
 */
 
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2013 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 /**
- * @brief USB Composite device 
+ * @brief USB Composite Device
  */
 
 #ifndef NO_USB
 
-#include <usb_dev.h>
+#include "usb_dev.h"
 
-#include <string.h>
-#include <stdint.h>
+#include "string.h"
+#include "stdint.h"
+
 #include <libmaple/nvic.h>
 #include <libmaple/usb_device.h>
 #include <libmaple/usb.h>
 #include <libmaple/iwdg.h>
 
-#include <wirish.h>
+#include "wirish.h"
 
 /*
  * Hooks used for bootloader reset signalling
@@ -66,6 +97,10 @@ static void rxHook(unsigned, void*);
 static void ifaceSetupHook(unsigned, void*);
 #endif
 
+/*
+ * USB Device
+ */
+ 
 // Libarra. USBDevice is the class used to initialize the device.
 USBDevice::USBDevice(void){
 	
@@ -91,7 +126,6 @@ void USBDevice::end(void){
 		enabled = false;
 	}
 }
-
 
 /*
  * USB HID interface
@@ -490,11 +524,10 @@ void HIDJoystick::hat(int16_t dir){
 
 #endif // joystic
 
-//#endif // USE__HID
 
-//================================================================================
-//================================================================================
-//	USBSerial interface
+/*
+ * USBSerial interface
+ */
 
 #define USB_TIMEOUT 50
 
@@ -511,14 +544,14 @@ void USBSerial::begin(void) {
 //Roger Clark. Two new begin functions has been added so that normal Arduino Sketches that use Serial.begin(xxx) will compile.
 void USBSerial::begin(unsigned long ignoreBaud) 
 {
-volatile unsigned long removeCompilerWarningsIgnoreBaud=ignoreBaud;
+	volatile unsigned long removeCompilerWarningsIgnoreBaud=ignoreBaud;
 
 	ignoreBaud=removeCompilerWarningsIgnoreBaud;
 }
 void USBSerial::begin(unsigned long ignoreBaud, uint8_t ignore)
 {
-volatile unsigned long removeCompilerWarningsIgnoreBaud=ignoreBaud;
-volatile uint8_t removeCompilerWarningsIgnore=ignore;
+	volatile unsigned long removeCompilerWarningsIgnoreBaud=ignoreBaud;
+	volatile uint8_t removeCompilerWarningsIgnore=ignore;
 
 	ignoreBaud=removeCompilerWarningsIgnoreBaud;
 	ignore=removeCompilerWarningsIgnore;
@@ -536,39 +569,23 @@ size_t n = 0;
 
 size_t USBSerial::write(const char *str) {
 size_t n = 0;
-    this->write(str, strlen(str));
+    this->write((const uint8*)str, strlen(str));
 	return n;
 }
 
-size_t USBSerial::write(const void *buf, uint32 len) {
-	size_t n = 0;
+size_t USBSerial::write(const uint8 *buf, uint32 len)
+{
+size_t n = 0;
     if (!this->isConnected() || !buf) {
         return 0;
     }
 
     uint32 txed = 0;
-    uint32 old_txed = 0;
-    uint32 start = millis();
-
-    uint32 sent = 0;
-
-    while (txed < len && (millis() - start < USB_TIMEOUT)) {
-        sent = usb_cdcacm_tx((const uint8*)buf + txed, len - txed);
-        txed += sent;
-        if (old_txed != txed) {
-            start = millis();
-        }
-        old_txed = txed;
+    while (txed < len) {
+        txed += usb_cdcacm_tx((const uint8*)buf + txed, len - txed);
     }
 
-	/*
-    if (sent == USB_CDCACM_TX_EPSIZE) {
-        while (usb_is_transmitting() != 0) {
-        }
-        // flush out to avoid having the pc wait for more data
-        usb_cdcacm_tx(NULL, 0);
-    }*/
-		return n;
+	return n;
 }
 
 int USBSerial::available(void) {
@@ -599,14 +616,10 @@ void USBSerial::flush(void)
     return;
 }
 
-uint32 USBSerial::read(void *buf, uint32 len) {
-    if (!buf) {
-        return 0;
-    }
-
+uint32 USBSerial::read(uint8 * buf, uint32 len) {
     uint32 rxed = 0;
     while (rxed < len) {
-        rxed += usb_cdcacm_rx((uint8*)buf + rxed, len - rxed);
+        rxed += usb_cdcacm_rx(buf + rxed, len - rxed);
     }
 
     return rxed;
@@ -782,7 +795,6 @@ static void rxHook(unsigned hook, void *ignored) {
 }
 
 #endif  // BOARD_HAVE_SERIALUSB
-
 
 USBDevice USBDev;
 

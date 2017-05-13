@@ -26,7 +26,7 @@
 
 /**
  * @file libmaple/usb/stm32f1/usb_device.c
- * @brief USB Device (VCOM, HID).
+ * @brief USB Composite with CDC ACM and HID support.
  *
  * FIXME: this works on the STM32F1 USB peripherals, and probably no
  * place else. Nonportable bits really need to be factored out, and
@@ -70,29 +70,16 @@
 
 uint32 ProtocolValue;
 
+// Are we currently sending an IN packet?
+static volatile int8 transmitting;
+
 #if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
 static void hidDataTxCb(void);
 static void hidDataRxCb(void);
-#endif
-static void vcomDataTxCb(void);
-static void vcomDataRxCb(void);
-static uint8* vcomGetSetLineCoding(uint16);
-
-static void usbInit(void);
-static void usbReset(void);
-static RESULT usbDataSetup(uint8 request);
-static RESULT usbNoDataSetup(uint8 request);
-static RESULT usbGetInterfaceSetting(uint8 interface, uint8 alt_setting);
-static uint8* usbGetDeviceDescriptor(uint16 length);
-static uint8* usbGetConfigDescriptor(uint16 length);
-static uint8* usbGetStringDescriptor(uint16 length);
-static void usbSetConfiguration(void);
-static void usbSetDeviceAddress(void);
 
 /*
- * Descriptors
+ * Report Descriptor
  */
-
 
 const uint8_t hid_report_descriptor[] = {	// Libarra. HID report descriptor that includes keyboard, mouse and joystick
 #if defined(USB_HID_KMJ) || defined(USB_HID_KM)
@@ -226,6 +213,240 @@ const uint8_t hid_report_descriptor[] = {	// Libarra. HID report descriptor that
 	0xC0					// end collection
 #endif
 };
+ 
+static ONE_DESCRIPTOR HID_Report_Descriptor = {
+    (uint8*)&hid_report_descriptor,
+    sizeof(hid_report_descriptor)
+};
+
+#define HID_INTERFACE_NUMBER 	0x02
+
+/* I/O state */
+
+#define HID_RX_BUFFER_SIZE	256 // must be power of 2
+#define HID_RX_BUFFER_SIZE_MASK (HID_RX_BUFFER_SIZE-1)
+/* Received data */
+static volatile uint8 hidBufferRx[HID_RX_BUFFER_SIZE];
+/* Write index to hidBufferRx */
+static volatile uint32 hid_rx_head;
+/* Read index from hidBufferRx */
+static volatile uint32 hid_rx_tail;
+
+#define HID_TX_BUFFER_SIZE	256 // must be power of 2
+#define HID_TX_BUFFER_SIZE_MASK (HID_TX_BUFFER_SIZE-1)
+// Tx data
+static volatile uint8 hidBufferTx[HID_TX_BUFFER_SIZE];
+// Write index to hidBufferTx
+static volatile uint32 hid_tx_head;
+// Read index from hidBufferTx
+static volatile uint32 hid_tx_tail;
+
+/*
+ * HID interface
+ */
+
+/* This function is non-blocking.
+ *
+ * It copies data from a user buffer into the USB peripheral TX
+ * buffer, and returns the number of bytes copied. */
+uint32 usb_hid_tx(const uint8* buf, uint32 len)
+{
+	if (len==0) return 0; // no data to send
+
+	uint32 head = hid_tx_head; // load volatile variable
+	uint32 tx_unsent = (head - hid_tx_tail) & HID_TX_BUFFER_SIZE_MASK;
+
+    // We can only put bytes in the buffer if there is place
+    if (len > (HID_TX_BUFFER_SIZE-tx_unsent-1) ) {
+        len = (HID_TX_BUFFER_SIZE-tx_unsent-1);
+    }
+	if (len==0) return 0; // buffer full
+
+	uint16 i;
+	// copy data from user buffer to USB Tx buffer
+	for (i=0; i<len; i++) {
+		hidBufferTx[head] = buf[i];
+		head = (head+1) & HID_TX_BUFFER_SIZE_MASK;
+	}
+	hid_tx_head = head; // store volatile variable
+
+	while(transmitting >= 0);
+	
+	if (transmitting<0) {
+		hidDataTxCb(); // initiate data transmission
+	}
+
+    return len;
+}
+
+
+
+uint32 usb_hid_data_available(void) {
+    return (hid_rx_head - hid_rx_tail) & HID_RX_BUFFER_SIZE_MASK;
+}
+
+uint16 usb_hid_get_pending(void) {
+    return (hid_tx_head - hid_tx_tail) & HID_TX_BUFFER_SIZE_MASK;
+}
+
+/* Non-blocking byte receive.
+ *
+ * Copies up to len bytes from our private data buffer (*NOT* the PMA)
+ * into buf and deq's the FIFO. */
+uint32 usb_hid_rx(uint8* buf, uint32 len)
+{
+    /* Copy bytes to buffer. */
+    uint32 n_copied = usb_hid_peek(buf, len);
+
+    /* Mark bytes as read. */
+	uint16 tail = hid_rx_tail; // load volatile variable
+	tail = (tail + n_copied) & HID_RX_BUFFER_SIZE_MASK;
+	hid_rx_tail = tail; // store volatile variable
+
+	uint32 rx_unread = (hid_rx_head - tail) & HID_RX_BUFFER_SIZE_MASK;
+    // If buffer was emptied to a pre-set value, re-enable the RX endpoint
+    if ( rx_unread <= 64 ) { // experimental value, gives the best performance
+        usb_set_ep_rx_stat(USB_HID_RX_ENDP, USB_EP_STAT_RX_VALID);
+	}
+    return n_copied;
+}
+
+/* Non-blocking byte lookahead.
+ *
+ * Looks at unread bytes without marking them as read. */
+uint32 usb_hid_peek(uint8* buf, uint32 len)
+{
+    int i;
+    uint32 tail = hid_rx_tail;
+	uint32 rx_unread = (hid_rx_head-tail) & HID_RX_BUFFER_SIZE_MASK;
+
+    if (len > rx_unread) {
+        len = rx_unread;
+    }
+
+    for (i = 0; i < len; i++) {
+        buf[i] = hidBufferRx[tail];
+        tail = (tail + 1) & HID_RX_BUFFER_SIZE_MASK;
+    }
+
+    return len;
+}
+
+/*
+ * Callbacks
+ */
+ 
+static void hidDataTxCb(void)
+{
+	uint32 tail = hid_tx_tail; // load volatile variable
+	uint32 tx_unsent = (hid_tx_head - tail) & HID_TX_BUFFER_SIZE_MASK;
+	if (tx_unsent==0) {
+		if ( (--transmitting)==0) goto flush_hid; // no more data to send
+		return; // it was already flushed, keep Tx endpoint disabled
+	}
+	transmitting = 1;
+    // We can only send up to USB_CDCACM_TX_EPSIZE bytes in the endpoint.
+    if (tx_unsent > USB_CDCACM_TX_EPSIZE) {
+        tx_unsent = USB_CDCACM_TX_EPSIZE;
+    }
+	// copy the bytes from USB Tx buffer to PMA buffer
+	uint32 *dst = usb_pma_ptr(USB_HID_TX_ADDR);
+    uint16 tmp = 0;
+	uint16 val;
+	int i;
+	for (i = 0; i < tx_unsent; i++) {
+		val = hidBufferTx[tail];
+		tail = (tail + 1) & HID_TX_BUFFER_SIZE_MASK;
+		if (i&1) {
+			*dst++ = tmp | (val<<8);
+		} else {
+			tmp = val;
+		}
+	}
+    if ( tx_unsent&1 ) {
+        *dst = tmp;
+    }
+	hid_tx_tail = tail; // store volatile variable
+flush_hid:
+	// enable Tx endpoint
+    usb_set_ep_tx_count(USB_HID_TX_ENDP, tx_unsent);
+    usb_set_ep_tx_stat(USB_HID_TX_ENDP, USB_EP_STAT_TX_VALID);
+}
+
+
+static void hidDataRxCb(void)
+{
+	uint32 head = hid_rx_head; // load volatile variable
+
+	uint32 ep_rx_size = usb_get_ep_rx_count(USB_HID_RX_ENDP);
+	// This copy won't overwrite unread bytes as long as there is 
+	// enough room in the USB Rx buffer for next packet
+	uint32 *src = usb_pma_ptr(USB_HID_RX_ADDR);
+    uint16 tmp = 0;
+	uint8 val;
+	uint32 i;
+	for (i = 0; i < ep_rx_size; i++) {
+		if (i&1) {
+			val = tmp>>8;
+		} else {
+			tmp = *src++;
+			val = tmp&0xFF;
+		}
+		hidBufferRx[head] = val;
+		head = (head + 1) & HID_RX_BUFFER_SIZE_MASK;
+	}
+	hid_rx_head = head; // store volatile variable
+
+	uint32 rx_unread = (head - hid_rx_tail) & HID_RX_BUFFER_SIZE_MASK;
+	// only enable further Rx if there is enough room to receive one more packet
+	if ( rx_unread < (HID_RX_BUFFER_SIZE-USB_HID_RX_EPSIZE) ) {
+		usb_set_ep_rx_stat(USB_HID_RX_ENDP, USB_EP_STAT_RX_VALID);
+	}
+}
+
+static uint8* usbGetHIDReportDescriptor(uint16 Length){
+  return Standard_GetDescriptorData(Length, &HID_Report_Descriptor);
+}
+
+/*
+static RESULT HID_SetProtocol(void){
+	uint8 wValue0 = pInformation->USBwValue0;
+	ProtocolValue = wValue0;
+	return USB_SUCCESS;
+}
+*/
+
+static uint8* usbGetProtocolValue(uint16 Length){ // Libarra. function needed for the HID, gets the protocol value in usbNoDataSetup
+	if (Length == 0){
+		pInformation->Ctrl_Info.Usb_wLength = 1;
+		return NULL;
+	} else {
+		return (uint8 *)(&ProtocolValue);
+	}
+}
+
+#endif
+
+
+
+static void vcomDataTxCb(void);
+static void vcomDataRxCb(void);
+static uint8* vcomGetSetLineCoding(uint16);
+
+static void usbInit(void);
+static void usbReset(void);
+static RESULT usbDataSetup(uint8 request);
+static RESULT usbNoDataSetup(uint8 request);
+static RESULT usbGetInterfaceSetting(uint8 interface, uint8 alt_setting);
+static uint8* usbGetDeviceDescriptor(uint16 length);
+static uint8* usbGetConfigDescriptor(uint16 length);
+static uint8* usbGetStringDescriptor(uint16 length);
+static void usbSetConfiguration(void);
+static void usbSetDeviceAddress(void);
+
+/*
+ * Descriptors
+ */
 
 /* FIXME move to Wirish */
 #define LEAFLABS_ID_VENDOR                0x1EAF
@@ -267,10 +488,7 @@ typedef struct {
 #define CCI_INTERFACE_NUMBER 	0x00
 #define DCI_INTERFACE_NUMBER 	0x01
 
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. sets the number of the HID Interface
-#define HID_INTERFACE_NUMBER 	0x02
-#endif
-
+#define MAX_POWER (100 >> 1)
 static const usb_descriptor_config usbCompositeDescriptor_Config = {
     .Config_Header = {
         .bLength              = sizeof(usb_descriptor_config_header),
@@ -418,7 +636,7 @@ static const usb_descriptor_config usbCompositeDescriptor_Config = {
         .bmAttributes     = USB_EP_TYPE_BULK,
         .wMaxPacketSize   = USB_HID_RX_EPSIZE,
         .bInterval        = 0x00,
-    }
+    },
     #endif
 };
 
@@ -474,6 +692,13 @@ static const usb_descriptor_string usbHIDDescriptor_iInterface = {
     .bString = {'H', 0, 'I', 0, 'D', 0},
 };
 
+/* FIXME move to Wirish */
+static const usb_descriptor_string usbCompositeDescriptor_iInterface = {
+    .bLength = USB_DESCRIPTOR_STRING_LEN(3),
+    .bDescriptorType = USB_DESCRIPTOR_TYPE_STRING,
+    .bString = {'C', 0, 'O', 0, 'M', 0, 'P', 0, 'O', 0, 'S', 0, 'I', 0, 'T', 0, 'E', 0},
+};
+
 static ONE_DESCRIPTOR Device_Descriptor = {
     (uint8*)&usbCompositeDescriptor_Device,
     sizeof(usb_descriptor_device)
@@ -483,23 +708,12 @@ static ONE_DESCRIPTOR Config_Descriptor = {
     (uint8*)&usbCompositeDescriptor_Config,
     sizeof(usb_descriptor_config)
 };
- 
-static ONE_DESCRIPTOR HID_Report_Descriptor = {
-    (uint8*)&hid_report_descriptor,
-    sizeof(hid_report_descriptor)
-};
 
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
-#define N_STRING_DESCRIPTORS 5
-#else
-#define N_STRING_DESCRIPTORS 4
-#endif
+#define N_STRING_DESCRIPTORS 3
 static ONE_DESCRIPTOR String_Descriptor[N_STRING_DESCRIPTORS] = {
     {(uint8*)&usbCompositeDescriptor_LangID,       USB_DESCRIPTOR_STRING_LEN(1)},
     {(uint8*)&usbCompositeDescriptor_iManufacturer,USB_DESCRIPTOR_STRING_LEN(8)},
     {(uint8*)&usbCompositeDescriptor_iProduct,     USB_DESCRIPTOR_STRING_LEN(5)},
-    {(uint8*)&usbVcomDescriptor_iInterface,   USB_DESCRIPTOR_STRING_LEN(4)},
-    {(uint8*)&usbHIDDescriptor_iInterface,   USB_DESCRIPTOR_STRING_LEN(3)}
 };
 
 /*
@@ -508,32 +722,26 @@ static ONE_DESCRIPTOR String_Descriptor[N_STRING_DESCRIPTORS] = {
 
 /* I/O state */
 
-#define CDC_SERIAL_BUFFER_SIZE	512
-#define HID_BUFFER_SIZE	512
+#define CDC_SERIAL_RX_BUFFER_SIZE	256 // must be power of 2
+#define CDC_SERIAL_RX_BUFFER_SIZE_MASK (CDC_SERIAL_RX_BUFFER_SIZE-1)
 
 /* Received data */
-static volatile uint8 vcomBufferRx[CDC_SERIAL_BUFFER_SIZE];
-/* Read index into vcomBufferRx */
-static volatile uint32 rx_cdcacm_offset = 0;
-/* Number of bytes left to transmit */
-static volatile uint32 n_cdcacm_unsent_bytes = 0;
-/* Are we currently sending an IN packet? */
-static volatile uint8 transmitting = 0;
-/* Number of unread bytes */
-static volatile uint32 n_cdcacm_unread_bytes = 0;
+static volatile uint8 vcomBufferRx[CDC_SERIAL_RX_BUFFER_SIZE];
+/* Write index to vcomBufferRx */
+static volatile uint32 vcom_rx_head;
+/* Read index from vcomBufferRx */
+static volatile uint32 vcom_rx_tail;
 
-//HID
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
-#define HID_BUFFER_SIZE	512
-/* Received data */
-static volatile uint8 hidBufferRx[HID_BUFFER_SIZE];
-/* Read index into vcomBufferRx */
-static volatile uint32 rx_hid_offset = 0;
-/* Number of bytes left to transmit */
-static volatile uint32 n_hid_unsent_bytes = 0;
-/* Number of unread bytes */
-static volatile uint32 n_hid_unread_bytes = 0;
-#endif
+#define CDC_SERIAL_TX_BUFFER_SIZE	256 // must be power of 2
+#define CDC_SERIAL_TX_BUFFER_SIZE_MASK (CDC_SERIAL_TX_BUFFER_SIZE-1)
+// Tx data
+static volatile uint8 vcomBufferTx[CDC_SERIAL_TX_BUFFER_SIZE];
+// Write index to vcomBufferTx
+static volatile uint32 vcom_tx_head;
+// Read index from vcomBufferTx
+static volatile uint32 vcom_tx_tail;
+
+
 
 /* Other state (line coding, DTR/RTS) */
 
@@ -597,12 +805,12 @@ static void (*ep_int_out[7])(void) =
  * functionality.
  */
 
-
 #if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. number of endpoints are set according to the usb type
 #define NUM_ENDPTS				  0x06
 #else
 #define NUM_ENDPTS                0x04
 #endif
+
 __weak DEVICE Device_Table = {
     .Total_Endpoint      = NUM_ENDPTS,
     .Total_Configuration = 1
@@ -679,30 +887,36 @@ void usb_cdcacm_putc(char ch) {
         ;
 }
 
-/* This function is blocking.
+/* This function is non-blocking.
  *
- * It copies data from a usercode buffer into the USB peripheral TX
+ * It copies data from a user buffer into the USB peripheral TX
  * buffer, and returns the number of bytes copied. */
-uint32 usb_cdcacm_tx(const uint8* buf, uint32 len) {
-    /* Last transmission hasn't finished, so abort. */
-    while (usb_is_transmitting()>0) ; // wait for end of transmission
+uint32 usb_cdcacm_tx(const uint8* buf, uint32 len)
+{
+	if (len==0) return 0; // no data to send
 
-    /* We can only put USB_CDCACM_TX_EPSIZE bytes in the buffer. */
-    if (len > USB_CDCACM_TX_EPSIZE) {
-        len = USB_CDCACM_TX_EPSIZE;
-    }
+	uint32 head = vcom_tx_head; // load volatile variable
+	uint32 tx_unsent = (head - vcom_tx_tail) & CDC_SERIAL_TX_BUFFER_SIZE_MASK;
 
-    /* Queue bytes for sending. */
-    if (len) {
-        usb_copy_to_pma(buf, len, USB_CDCACM_TX_ADDR);
+    // We can only put bytes in the buffer if there is place
+    if (len > (CDC_SERIAL_TX_BUFFER_SIZE-tx_unsent-1) ) {
+        len = (CDC_SERIAL_TX_BUFFER_SIZE-tx_unsent-1);
     }
-    // We still need to wait for the interrupt, even if we're sending
-    // zero bytes. (Sending zero-size packets is useful for flushing
-    // host-side buffers.)
-    usb_set_ep_tx_count(USB_CDCACM_TX_ENDP, len);
-    n_cdcacm_unsent_bytes = len;
-    transmitting = 1;
-    usb_set_ep_tx_stat(USB_CDCACM_TX_ENDP, USB_EP_STAT_TX_VALID);
+	if (len==0) return 0; // buffer full
+
+	uint16 i;
+	// copy data from user buffer to USB Tx buffer
+	for (i=0; i<len; i++) {
+		vcomBufferTx[head] = buf[i];
+		head = (head+1) & CDC_SERIAL_TX_BUFFER_SIZE_MASK;
+	}
+	vcom_tx_head = head; // store volatile variable
+	
+	while(transmitting >= 0);
+	
+	if (transmitting<0) {
+		vcomDataTxCb(); // initiate data transmission
+	}
 
     return len;
 }
@@ -710,7 +924,7 @@ uint32 usb_cdcacm_tx(const uint8* buf, uint32 len) {
 
 
 uint32 usb_cdcacm_data_available(void) {
-    return n_cdcacm_unread_bytes;
+    return (vcom_rx_head - vcom_rx_tail) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
 }
 
 uint8 usb_is_transmitting(void) {
@@ -718,61 +932,65 @@ uint8 usb_is_transmitting(void) {
 }
 
 uint16 usb_cdcacm_get_pending(void) {
-    return n_cdcacm_unsent_bytes;
+    return (vcom_tx_head - vcom_tx_tail) & CDC_SERIAL_TX_BUFFER_SIZE_MASK;
 }
 
-/* Nonblocking byte receive.
+/* Non-blocking byte receive.
  *
  * Copies up to len bytes from our private data buffer (*NOT* the PMA)
  * into buf and deq's the FIFO. */
-uint32 usb_cdcacm_rx(uint8* buf, uint32 len) {
+uint32 usb_cdcacm_rx(uint8* buf, uint32 len)
+{
     /* Copy bytes to buffer. */
     uint32 n_copied = usb_cdcacm_peek(buf, len);
 
     /* Mark bytes as read. */
-    n_cdcacm_unread_bytes -= n_copied;
-    rx_cdcacm_offset = (rx_cdcacm_offset + n_copied) % CDC_SERIAL_BUFFER_SIZE;
+	uint16 tail = vcom_rx_tail; // load volatile variable
+	tail = (tail + n_copied) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
+	vcom_rx_tail = tail; // store volatile variable
 
-    /* If all bytes have been read, re-enable the RX endpoint, which
-     * was set to NAK when the current batch of bytes was received. */
-    if (n_cdcacm_unread_bytes == 0) {
-        usb_set_ep_rx_count(USB_CDCACM_RX_ENDP, USB_CDCACM_RX_EPSIZE);
+	uint32 rx_unread = (vcom_rx_head - tail) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
+    // If buffer was emptied to a pre-set value, re-enable the RX endpoint
+    if ( rx_unread <= 64 ) { // experimental value, gives the best performance
         usb_set_ep_rx_stat(USB_CDCACM_RX_ENDP, USB_EP_STAT_RX_VALID);
-    }
-
+	}
     return n_copied;
 }
 
-/* Nonblocking byte lookahead.
+/* Non-blocking byte lookahead.
  *
  * Looks at unread bytes without marking them as read. */
-uint32 usb_cdcacm_peek(uint8* buf, uint32 len) {
+uint32 usb_cdcacm_peek(uint8* buf, uint32 len)
+{
     int i;
-    uint32 head = rx_cdcacm_offset;
+    uint32 tail = vcom_rx_tail;
+	uint32 rx_unread = (vcom_rx_head-tail) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
 
-    if (len > n_cdcacm_unread_bytes) {
-        len = n_cdcacm_unread_bytes;
+    if (len > rx_unread) {
+        len = rx_unread;
     }
 
     for (i = 0; i < len; i++) {
-        buf[i] = vcomBufferRx[head];
-        head = (head + 1) % CDC_SERIAL_BUFFER_SIZE;
+        buf[i] = vcomBufferRx[tail];
+        tail = (tail + 1) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
     }
 
     return len;
 }
 
-uint32 usb_cdcacm_peek_ex(uint8* buf, uint32 offset, uint32 len) {
+uint32 usb_cdcacm_peek_ex(uint8* buf, uint32 offset, uint32 len)
+{
     int i;
-    uint32 head = (rx_cdcacm_offset + offset) % CDC_SERIAL_BUFFER_SIZE;
+    uint32 tail = (vcom_rx_tail + offset) & CDC_SERIAL_RX_BUFFER_SIZE_MASK ;
+	uint32 rx_unread = (vcom_rx_head-tail) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
 
-    if (len + offset > n_cdcacm_unread_bytes) {
-        len = n_cdcacm_unread_bytes - offset;
+    if (len + offset > rx_unread) {
+        len = rx_unread - offset;
     }
 
     for (i = 0; i < len; i++) {
-        buf[i] = vcomBufferRx[head];
-        head = (head + 1) % CDC_SERIAL_BUFFER_SIZE;
+        buf[i] = vcomBufferRx[tail];
+        tail = (tail + 1) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
     }
 
     return len;
@@ -781,12 +999,12 @@ uint32 usb_cdcacm_peek_ex(uint8* buf, uint32 offset, uint32 len) {
 /* Roger Clark. Added. for Arduino 1.0 API support of Serial.peek() */
 int usb_cdcacm_peek_char() 
 {
-    if (n_cdcacm_unread_bytes == 0) 
+    if (usb_cdcacm_data_available() == 0) 
 	{
 		return -1;
     }
 
-    return vcomBufferRx[rx_cdcacm_offset];
+    return vcomBufferRx[vcom_rx_tail];
 }
 
 uint8 usb_cdcacm_get_dtr() {
@@ -821,176 +1039,74 @@ int usb_cdcacm_get_n_data_bits(void) {
 }
 
 /*
- * HID interface
- * Libarra. HID functions for sending and receiving data
- */
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)
-/* This function is blocking.
- *
- * It copies data from a usercode buffer into the USB peripheral TX
- * buffer, and returns the number of bytes copied. */
-uint32 usb_hid_tx(const uint8* buf, uint32 len) {
-    /* Last transmission hasn't finished, so abort. */
-    while (usb_is_transmitting()>0) ; // wait for end of transmission
-
-    /* We can only put USB_HID_TX_EPSIZE bytes in the buffer. */
-    if (len > USB_HID_TX_EPSIZE) {
-        len = USB_HID_TX_EPSIZE;
-    }
-
-    /* Queue bytes for sending. */
-    if (len) {
-        usb_copy_to_pma(buf, len, GetEPTxAddr(USB_HID_TX_ENDP));//USB_HID_TX_ADDR);
-    }
-    // We still need to wait for the interrupt, even if we're sending
-    // zero bytes. (Sending zero-size packets is useful for flushing
-    // host-side buffers.)
-    usb_set_ep_tx_count(USB_HID_TX_ENDP, len);
-    n_hid_unsent_bytes = len;
-    transmitting = 1;
-    usb_set_ep_tx_stat(USB_HID_TX_ENDP, USB_EP_STAT_TX_VALID);
-
-    return len;
-}
-
-uint32 usb_hid_data_available(void) {
-    return n_hid_unread_bytes;
-}
-
-uint16 usb_hid_get_pending(void) {
-    return n_hid_unsent_bytes;
-}
-
-/* Nonblocking byte receive.
- *
- * Copies up to len bytes from our private data buffer (*NOT* the PMA)
- * into buf and deq's the FIFO. */
-uint32 usb_hid_rx(uint8* buf, uint32 len) {
-    /* Copy bytes to buffer. */
-    uint32 n_copied = usb_hid_peek(buf, len);
-
-    /* Mark bytes as read. */
-    n_hid_unread_bytes -= n_copied;
-    rx_hid_offset = (rx_hid_offset + n_copied) % HID_BUFFER_SIZE;
-
-    /* If all bytes have been read, re-enable the RX endpoint, which
-     * was set to NAK when the current batch of bytes was received. */
-    if (n_hid_unread_bytes == 0) {
-        usb_set_ep_rx_count(USB_HID_RX_ENDP, USB_HID_RX_EPSIZE);
-        usb_set_ep_rx_stat(USB_HID_RX_ENDP, USB_EP_STAT_RX_VALID);
-		rx_hid_offset = 0;
-    }
-
-    return n_copied;
-}
-
-/* Nonblocking byte lookahead.
- *
- * Looks at unread bytes without marking them as read. */
-uint32 usb_hid_peek(uint8* buf, uint32 len) {
-    int i;
-    uint32 head = rx_hid_offset;
-
-    if (len > n_hid_unread_bytes) {
-        len = n_hid_unread_bytes;
-    }
-
-    for (i = 0; i < len; i++) {
-        buf[i] = hidBufferRx[head];
-        head = (head + 1) % HID_BUFFER_SIZE;
-    }
-
-    return len;
-}
-
-static void hidDataTxCb(void) {
-    n_hid_unsent_bytes = 0;
-    transmitting = 0;
-}
-
-static void hidDataRxCb(void) {
-	uint32 ep_rx_size;
-	uint32 tail = (rx_hid_offset + n_hid_unread_bytes) % HID_BUFFER_SIZE;
-	uint8 ep_rx_data[USB_HID_RX_EPSIZE];
-	uint32 i;
-
-    usb_set_ep_rx_stat(USB_HID_RX_ENDP, USB_EP_STAT_RX_NAK);
-    ep_rx_size = usb_get_ep_rx_count(USB_HID_RX_ENDP);
-    /* This copy won't overwrite unread bytes, since we've set the RX
-     * endpoint to NAK, and will only set it to VALID when all bytes
-     * have been read. */
-    usb_copy_from_pma((uint8*)ep_rx_data, ep_rx_size,
-                      USB_HID_RX_ADDR);
-
-	for (i = 0; i < ep_rx_size; i++) {
-		hidBufferRx[tail] = ep_rx_data[i];
-		tail = (tail + 1) % HID_BUFFER_SIZE;
-	}
-
-	n_hid_unread_bytes += ep_rx_size;
-
-    if (n_hid_unread_bytes == 0) {
-        usb_set_ep_rx_count(USB_HID_RX_ENDP, USB_HID_RX_EPSIZE);
-        usb_set_ep_rx_stat(USB_HID_RX_ENDP, USB_EP_STAT_RX_VALID);
-    }
-}
-
-static uint8* usbGetHIDReportDescriptor(uint16 Length){
-  return Standard_GetDescriptorData(Length, &HID_Report_Descriptor);
-}
-#endif
-
-/*
-static RESULT HID_SetProtocol(void){
-	uint8 wValue0 = pInformation->USBwValue0;
-	ProtocolValue = wValue0;
-	return USB_SUCCESS;
-}
-*/
-static uint8* usbGetProtocolValue(uint16 Length){ // Libarra. function needed for the HID, gets the protocol value in usbNoDataSetup
-	if (Length == 0){
-		pInformation->Ctrl_Info.Usb_wLength = 1;
-		return NULL;
-	} else {
-		return (uint8 *)(&ProtocolValue);
-	}
-}
-
-
-/*
  * Callbacks
  */
-
-static void vcomDataTxCb(void) {
-    n_cdcacm_unsent_bytes = 0;
-    transmitting = 0;
+static void vcomDataTxCb(void)
+{
+	uint32 tail = vcom_tx_tail; // load volatile variable
+	uint32 tx_unsent = (vcom_tx_head - tail) & CDC_SERIAL_TX_BUFFER_SIZE_MASK;
+	if (tx_unsent==0) {
+		if ( (--transmitting)==0) goto flush_vcom; // no more data to send
+		return; // it was already flushed, keep Tx endpoint disabled
+	}
+	transmitting = 1;
+    // We can only send up to USB_CDCACM_TX_EPSIZE bytes in the endpoint.
+    if (tx_unsent > USB_CDCACM_TX_EPSIZE) {
+        tx_unsent = USB_CDCACM_TX_EPSIZE;
+    }
+	// copy the bytes from USB Tx buffer to PMA buffer
+	uint32 *dst = usb_pma_ptr(USB_CDCACM_TX_ADDR);
+    uint16 tmp = 0;
+	uint16 val;
+	int i;
+	for (i = 0; i < tx_unsent; i++) {
+		val = vcomBufferTx[tail];
+		tail = (tail + 1) & CDC_SERIAL_TX_BUFFER_SIZE_MASK;
+		if (i&1) {
+			*dst++ = tmp | (val<<8);
+		} else {
+			tmp = val;
+		}
+	}
+    if ( tx_unsent&1 ) {
+        *dst = tmp;
+    }
+	vcom_tx_tail = tail; // store volatile variable
+flush_vcom:
+	// enable Tx endpoint
+    usb_set_ep_tx_count(USB_CDCACM_TX_ENDP, tx_unsent);
+    usb_set_ep_tx_stat(USB_CDCACM_TX_ENDP, USB_EP_STAT_TX_VALID);
 }
 
-static void vcomDataRxCb(void) {
-	uint32 ep_rx_size;
-	uint32 tail = (rx_cdcacm_offset + n_cdcacm_unread_bytes) % CDC_SERIAL_BUFFER_SIZE;
-	uint8 ep_rx_data[USB_CDCACM_RX_EPSIZE];
+
+static void vcomDataRxCb(void)
+{
+	uint32 head = vcom_rx_head; // load volatile variable
+
+	uint32 ep_rx_size = usb_get_ep_rx_count(USB_CDCACM_RX_ENDP);
+	// This copy won't overwrite unread bytes as long as there is 
+	// enough room in the USB Rx buffer for next packet
+	uint32 *src = usb_pma_ptr(USB_CDCACM_RX_ADDR);
+    uint16 tmp = 0;
+	uint8 val;
 	uint32 i;
-
-    usb_set_ep_rx_stat(USB_CDCACM_RX_ENDP, USB_EP_STAT_RX_NAK);
-    ep_rx_size = usb_get_ep_rx_count(USB_CDCACM_RX_ENDP);
-    /* This copy won't overwrite unread bytes, since we've set the RX
-     * endpoint to NAK, and will only set it to VALID when all bytes
-     * have been read. */
-    usb_copy_from_pma((uint8*)ep_rx_data, ep_rx_size,
-                      USB_CDCACM_RX_ADDR);
-
 	for (i = 0; i < ep_rx_size; i++) {
-		vcomBufferRx[tail] = ep_rx_data[i];
-		tail = (tail + 1) % CDC_SERIAL_BUFFER_SIZE;
+		if (i&1) {
+			val = tmp>>8;
+		} else {
+			tmp = *src++;
+			val = tmp&0xFF;
+		}
+		vcomBufferRx[head] = val;
+		head = (head + 1) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
 	}
+	vcom_rx_head = head; // store volatile variable
 
-	n_cdcacm_unread_bytes += ep_rx_size;
-
-    if (n_cdcacm_unread_bytes == 0) {
-        usb_set_ep_rx_count(USB_CDCACM_RX_ENDP, USB_CDCACM_RX_EPSIZE);
-        usb_set_ep_rx_stat(USB_CDCACM_RX_ENDP, USB_EP_STAT_RX_VALID);
-    }
+	uint32 rx_unread = (head - vcom_rx_tail) & CDC_SERIAL_RX_BUFFER_SIZE_MASK;
+	// only enable further Rx if there is enough room to receive one more packet
+	if ( rx_unread < (CDC_SERIAL_RX_BUFFER_SIZE-USB_CDCACM_RX_EPSIZE) ) {
+		usb_set_ep_rx_stat(USB_CDCACM_RX_ENDP, USB_EP_STAT_RX_VALID);
+	}
 
     if (rx_hook) {
         rx_hook(USB_CDCACM_HOOK_RX, 0);
@@ -1036,16 +1152,14 @@ static void usbReset(void) {
     /* setup control endpoint 0 */
     usb_set_ep_type(USB_EP0, USB_EP_EP_TYPE_CONTROL);
     usb_set_ep_tx_stat(USB_EP0, USB_EP_STAT_TX_STALL);
-    usb_set_ep_rx_addr(USB_EP0, USB_CTRL_RX_ADDR);
-    usb_set_ep_tx_addr(USB_EP0, USB_CTRL_TX_ADDR);
+    usb_set_ep_rx_addr(USB_EP0, USB_CDCACM_CTRL_RX_ADDR);
+    usb_set_ep_tx_addr(USB_EP0, USB_CDCACM_CTRL_TX_ADDR);
     usb_clear_status_out(USB_EP0);
 
     usb_set_ep_rx_count(USB_EP0, pProperty->MaxPacketSize);
     usb_set_ep_rx_stat(USB_EP0, USB_EP_STAT_RX_VALID);
 
-    /* TODO figure out differences in style between RX/TX EP setup */
-	
-	/* setup management endpoint 3  */
+    /* setup management endpoint 1  */
     usb_set_ep_type(USB_CDCACM_MANAGEMENT_ENDP, USB_EP_EP_TYPE_INTERRUPT);
     usb_set_ep_tx_addr(USB_CDCACM_MANAGEMENT_ENDP,
                        USB_CDCACM_MANAGEMENT_ADDR);
@@ -1054,13 +1168,13 @@ static void usbReset(void) {
 
     /* TODO figure out differences in style between RX/TX EP setup */
 
-    /* set up cdcacm endpoint OUT (RX) */
+    /* set up data endpoint OUT (RX) */
     usb_set_ep_type(USB_CDCACM_RX_ENDP, USB_EP_EP_TYPE_BULK);
     usb_set_ep_rx_addr(USB_CDCACM_RX_ENDP, USB_CDCACM_RX_ADDR);
     usb_set_ep_rx_count(USB_CDCACM_RX_ENDP, USB_CDCACM_RX_EPSIZE);
     usb_set_ep_rx_stat(USB_CDCACM_RX_ENDP, USB_EP_STAT_RX_VALID);
 
-    /* set up cdcacm endpoint IN (TX)  */
+    /* set up data endpoint IN (TX)  */
     usb_set_ep_type(USB_CDCACM_TX_ENDP, USB_EP_EP_TYPE_BULK);
     usb_set_ep_tx_addr(USB_CDCACM_TX_ENDP, USB_CDCACM_TX_ADDR);
     usb_set_ep_tx_stat(USB_CDCACM_TX_ENDP, USB_EP_STAT_TX_NAK);
@@ -1087,24 +1201,28 @@ static void usbReset(void) {
     SetDeviceAddress(0);
 
     /* Reset the RX/TX state */
-    n_cdcacm_unread_bytes = 0;
-    n_cdcacm_unsent_bytes = 0;
-    rx_cdcacm_offset = 0;
-    transmitting = 0;
+    
+    //VCOM
+	vcom_rx_head = 0;
+	vcom_rx_tail = 0;
+	vcom_tx_head = 0;
+	vcom_tx_tail = 0;
+    
+	transmitting = -1;
     
 	//HID
 #if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J) // Libarra. resets hid variables
-    n_hid_unread_bytes = 0;
-    n_hid_unsent_bytes = 0;
-    rx_hid_offset = 0;
+	hid_rx_head = 0;
+	hid_rx_tail = 0;
+	hid_tx_head = 0;
+	hid_tx_tail = 0;
 #endif
-    
 }
 
 static RESULT usbDataSetup(uint8 request) {
     uint8* (*CopyRoutine)(uint16) = 0;
-	
-	if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
+
+    if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
         switch (request) {
         case USB_CDCACM_GET_LINE_CODING:
             CopyRoutine = vcomGetSetLineCoding;
@@ -1143,10 +1261,10 @@ static RESULT usbDataSetup(uint8 request) {
 		}
 	}
 #endif
-	
-	if (CopyRoutine == NULL){
-		return USB_UNSUPPORT;
-	}
+
+    if (CopyRoutine == NULL) {
+        return USB_UNSUPPORT;
+    }
 
     pInformation->Ctrl_Info.CopyData = CopyRoutine;
     pInformation->Ctrl_Info.Usb_wOffset = 0;
@@ -1192,7 +1310,7 @@ static RESULT usbNoDataSetup(uint8 request) {
 static RESULT usbGetInterfaceSetting(uint8 interface, uint8 alt_setting) {
     if (alt_setting > 0) {
         return USB_UNSUPPORT;
-    } else if (interface > NUMINTERFACES-1) {
+    } else if (interface > 1) {
         return USB_UNSUPPORT;
     }
 

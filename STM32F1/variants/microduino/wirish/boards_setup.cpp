@@ -40,7 +40,7 @@
 #include <libmaple/timer.h>
 
 #include <boards.h>
-#include <usb_serial.h>
+#include <usb_dev.h>
 
 // Allow boards to provide a PLL multiplier. This is useful for
 // e.g. STM32F100 value line MCUs, which use slower multipliers.
@@ -48,7 +48,11 @@
 // works for F103 performance line MCUs, which is all that LeafLabs
 // currently officially supports).
 #ifndef BOARD_RCC_PLLMUL
-#define BOARD_RCC_PLLMUL RCC_PLLMUL_9
+  #if F_CPU==72000000
+	#define BOARD_RCC_PLLMUL RCC_PLLMUL_9
+  #elif F_CPU==48000000
+	#define BOARD_RCC_PLLMUL RCC_PLLMUL_6
+  #endif
 #endif
 
 namespace wirish {
@@ -71,7 +75,7 @@ namespace wirish {
 			#if F_CPU == 72000000
 			rcc_set_prescaler(RCC_PRESCALER_USB, RCC_USB_SYSCLK_DIV_1_5);
 			#elif F_CPU == 48000000
-			rcc_set_prescaler(RCC_PRESCALER_USB, RCC_USB_SYSCLK_DIV_1_5);			
+			rcc_set_prescaler(RCC_PRESCALER_USB, RCC_USB_SYSCLK_DIV_1);			
 			#endif	
         }
 
@@ -82,7 +86,10 @@ namespace wirish {
         __weak void board_setup_usb(void) {
 
 #ifdef USB_HARDWARE 
-			Serial.begin();// Roger Clark. Changed SerialUSB to Serial for Arduino sketch compatibility
+			//Serial.begin();// Roger Clark. Changed SerialUSB to Serial for Arduino sketch compatibility
+#ifndef NO_USB
+			USBDev.begin(); // Libarra. Now USBDev initializes the device, although Serial.begin() still works
+#endif
 #endif
 		}
 
