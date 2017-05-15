@@ -236,7 +236,6 @@ typedef struct
  * HID interface
  */
 
-#if defined(USB_HID_KMJ) || defined(USB_HID_KM) || defined(USB_HID_J)// Libarra. HID functions
 uint32 usb_hid_tx(const uint8* buf, uint32 len);
 uint32 usb_hid_rx(uint8* buf, uint32 len);
 uint32 usb_hid_peek(uint8* buf, uint32 len);
@@ -247,7 +246,6 @@ uint16 usb_hid_get_pending(void);
 //static RESULT HID_SetProtocol(void);
 static uint8 *usbGetProtocolValue(uint16 Length);
 static uint8 *usbGetHIDReportDescriptor(uint16 Length);
-#endif
 
 #endif
 

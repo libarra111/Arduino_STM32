@@ -354,11 +354,11 @@ public:
 
 //Instances
 
+#ifdef USB_HARDWARE 
+
 extern USBDevice USBDev;
 
-#ifdef USB_HARDWARE 
 extern USBSerial Serial;
-#endif
 
 #if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 extern HIDMouse Mouse;
@@ -367,6 +367,8 @@ extern HIDKeyboard Keyboard;
 
 #if defined(USB_HID_KMJ) || defined(USB_HID_J)
 extern HIDJoystick Joystick;
+#endif
+
 #endif
 
 #endif //NO_USB

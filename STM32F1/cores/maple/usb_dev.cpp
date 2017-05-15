@@ -796,13 +796,12 @@ static void rxHook(unsigned hook, void *ignored) {
 
 #endif  // BOARD_HAVE_SERIALUSB
 
-USBDevice USBDev;
-
 #if BOARD_HAVE_SERIALUSB
 #ifdef USB_HARDWARE 
+
+USBDevice USBDev;
+
 USBSerial Serial;
-#endif
-#endif
 
 #if defined(USB_HID_KMJ) || defined(USB_HID_KM)
 HIDMouse Mouse;
@@ -810,6 +809,9 @@ HIDKeyboard Keyboard;
 #endif
 #if defined(USB_HID_KMJ) || defined(USB_HID_J)
 HIDJoystick Joystick;
+#endif
+
+#endif
 #endif
 
 #endif //NO_USB
