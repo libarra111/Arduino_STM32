@@ -346,8 +346,8 @@ static void hidDataTxCb(void)
 	}
 	transmitting = 1;
     // We can only send up to USB_CDCACM_TX_EPSIZE bytes in the endpoint.
-    if (tx_unsent > USB_CDCACM_TX_EPSIZE) {
-        tx_unsent = USB_CDCACM_TX_EPSIZE;
+    if (tx_unsent > USB_HID_TX_EPSIZE) {
+        tx_unsent = USB_HID_TX_EPSIZE;
     }
 	// copy the bytes from USB Tx buffer to PMA buffer
 	uint32 *dst = usb_pma_ptr(USB_HID_TX_ADDR);
