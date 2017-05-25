@@ -151,12 +151,8 @@ void HIDMouse::end(void){
 void HIDMouse::click(uint8_t b)
 {
 	_buttons = b;
-	while (usb_is_transmitting() != 0) {
-    }
 	move(0,0,0);
 	_buttons = 0;
-	while (usb_is_transmitting() != 0) {
-    }
 	move(0,0,0);
 }
 
@@ -177,8 +173,6 @@ void HIDMouse::move(signed char x, signed char y, signed char wheel)
 	
 	usb_hid_tx(buf, sizeof(buf));
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	/* flush out to avoid having the pc wait for more data */
 	usb_hid_tx(NULL, 0);
 }
@@ -188,23 +182,17 @@ void HIDMouse::buttons(uint8_t b)
 	if (b != _buttons)
 	{
 		_buttons = b;
-		while (usb_is_transmitting() != 0) {
-		}
 		move(0,0,0);
 	}
 }
 
 void HIDMouse::press(uint8_t b)
 {
-	while (usb_is_transmitting() != 0) {
-    }
 	buttons(_buttons | b);
 }
 
 void HIDMouse::release(uint8_t b)
 {
-	while (usb_is_transmitting() != 0) {
-    }
 	buttons(_buttons & ~b);
 }
 
@@ -239,8 +227,6 @@ void HIDKeyboard::sendReport(KeyReport* keys)
 	}
 	usb_hid_tx(buf, sizeof(buf));
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	/* flush out to avoid having the pc wait for more data */
 	usb_hid_tx(NULL, 0);
 }
@@ -291,9 +277,6 @@ size_t HIDKeyboard::press(uint8_t k)
 		}
 	}
 	
-	while (usb_is_transmitting() != 0) {
-    }
-	
 	sendReport(&_keyReport);
 	return 1;
 }
@@ -328,9 +311,6 @@ size_t HIDKeyboard::release(uint8_t k)
 		}
 	}
 	
-	while (usb_is_transmitting() != 0) {
-    }
-
 	sendReport(&_keyReport);
 	return 1;
 }
@@ -344,9 +324,6 @@ void HIDKeyboard::releaseAll(void)
 	_keyReport.keys[4] = 0;
 	_keyReport.keys[5] = 0;
 	_keyReport.modifiers = 0;
-	
-	while (usb_is_transmitting() != 0) {
-    }
 	
 	sendReport(&_keyReport);
 }
@@ -372,8 +349,6 @@ size_t HIDKeyboard::write(uint8_t c)
 void HIDJoystick::sendReport(void){
 	usb_hid_tx(joystick_Report, sizeof(joystick_Report));
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	/* flush out to avoid having the pc wait for more data */
 	usb_hid_tx(NULL, 0);
 }
@@ -407,8 +382,6 @@ void HIDJoystick::button(uint8_t button, bool val){
 	}
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -418,8 +391,6 @@ void HIDJoystick::X(uint16_t val){
 	joystick_Report[6] = (joystick_Report[6] & 0xC0) | (val >> 4);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -429,8 +400,6 @@ void HIDJoystick::Y(uint16_t val){
 	joystick_Report[7] = (val >> 2);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -442,8 +411,6 @@ void HIDJoystick::position(uint16_t x, uint16_t y){
 	joystick_Report[7] = (y >> 2);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -453,8 +420,6 @@ void HIDJoystick::Z(uint16_t val){
 	joystick_Report[9] = (joystick_Report[9] & 0xFC) | (val >> 8);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -464,8 +429,6 @@ void HIDJoystick::Zrotate(uint16_t val){
 	joystick_Report[10] = (joystick_Report[10] & 0xF0) | (val >> 6);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -475,8 +438,6 @@ void HIDJoystick::sliderLeft(uint16_t val){
 	joystick_Report[11] = (joystick_Report[11] & 0xC0) | (val >> 4);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -486,8 +447,6 @@ void HIDJoystick::sliderRight(uint16_t val){
 	joystick_Report[12] = (val >> 2);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -498,8 +457,6 @@ void HIDJoystick::slider(uint16_t val){
 	joystick_Report[12] = (val >> 2);
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
@@ -517,8 +474,6 @@ void HIDJoystick::hat(int16_t dir){
 	joystick_Report[5] = (joystick_Report[5] & 0xF0) | val;
 	
 	
-	while (usb_is_transmitting() != 0) {
-    }
 	sendReport();
 }
 
